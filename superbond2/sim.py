@@ -198,9 +198,9 @@ class SimGame:
     def _draw_player(self, img) -> None:
         px, py = self.layout.player
         img[py - 12:py + 12, px - 6:px + 6] = PLAYER
-        if self.doing is not None:                # swing: the arm and tool move every tick
-            dy = -16 if int(round(self.t / TICK)) % 2 else 2
-            img[py + dy:py + dy + 14, px + 6:px + 18] = SPRITE
+        if self.doing is not None:                # swing: the arm and tool move every tick,
+            dy = (-16, -6, 4)[int(round(self.t / TICK)) % 3]   # 3 steps, so looks 2 ticks
+            img[py + dy:py + dy + 12, px + 6:px + 18] = SPRITE   # apart still differ
 
     def _draw_item(self, img, i: int, item: str) -> None:
         s = self.layout.slot(i)

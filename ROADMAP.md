@@ -29,7 +29,7 @@ bottom.
 - [ ] Check the server's rules on bots in PvP and on the Grand Exchange.
 - [ ] Run the bake-off at home ([bench/README.md](bench/README.md)) and send the results.
 - [ ] Note the PC's CPU and RAM (Task Manager → Performance).
-- [ ] Try the eyes on the VM ([superbond2/README.md](superbond2/README.md)) and send the output and look.png.
+- [ ] Try the eyes and hands on the VM ([superbond2/README.md](superbond2/README.md)) and send the output and look.png.
 
 ## Build order
 
@@ -40,8 +40,10 @@ bottom.
 ### Phase 1: superbond2 v0
 - [x] Eyes: find the canvas on the desktop, highlights by name, inventory tags, HP, busy/idle, in game or not ([superbond2/](superbond2/))
 - [ ] Eyes, checked on the real client (`python -m superbond2 look`): boxes, HP, busy while chopping
-- [ ] Hands: mouse and keyboard in the VM, kill switch
-- [ ] Actions and routines: the action set, a routine format with screen conditions, a runner
+- [x] Hands: mouse and keyboard in the VM (pyautogui) or the simulated game; kill switch (mouse in a corner); keys limited to space, esc, enter, 1-5
+- [x] Actions: click the nearest highlight, click an item or slot, drop all, press, wait, wait until idle; each reports what changed
+- [ ] Hands, checked on the real client (`python -m superbond2 do ...`)
+- [ ] Routines: a format with screen conditions, saving, and a runner
 - [ ] Brain loop: state → model → action, with the notebook, goals, journal and decision log
 - [ ] Survival reflexes with his thresholds; the account lock shared with skillbot
 - [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying

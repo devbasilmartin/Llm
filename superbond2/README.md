@@ -1,6 +1,7 @@
 # superbond2
 
-The agent itself. So far: his **eyes** and a **simulated game** to build the rest against.
+The agent itself. So far: his **eyes**, his **hands** and a **simulated game** to build the
+rest against.
 See [ROADMAP.md](../ROADMAP.md) for the plan.
 
 ## What the eyes see
@@ -56,6 +57,47 @@ This only reads the screen; it never touches the mouse, so it's safe while skill
 **Send me** the printed text and `look.png` (crop out the account name). Things to check:
 does every highlight have a box with the right name? Is HP right? Does *busy* say yes while
 you chop? (Run `look` while chopping, then while standing still.)
+
+## His hands
+
+`hands.py` is the mouse and keyboard: on the real client through pyautogui (inside the VM),
+or on the simulated game. **The kill switch: move the mouse into any corner of the screen**
+and he stops at the next thing he does.
+
+He only presses space, esc, enter and 1-5, so he can't type in chat.
+
+`actions.py` is what he can do with them, one game-level action at a time:
+
+| action | does |
+|---|---|
+| `click_nearest name` | click the nearest highlight with that name: a tree, a cow, the bank, loot |
+| `click_item item` | click the first inventory slot with that item (eat it, bury it...) |
+| `click_slot slot` | click inventory slot 0-27 |
+| `drop_all item` | shift-click every slot with that item |
+| `press key` | space, esc, enter or 1-5 |
+| `wait seconds` | do nothing for up to a minute |
+| `wait_until_idle` | wait until the character stops |
+
+Every action looks before and after and says what changed, e.g. *clicked the nearest
+oak_tree: you're busy now*, or *idle after 41s: +12 oak logs; 1 oak tree gone*. That report
+is how he finds out whether something worked.
+
+### Try the hands on the VM
+
+After `calibrate` (above), with the character standing near some highlights:
+
+```sh
+python -m superbond2 do click_nearest name=oak_tree
+python -m superbond2 do wait_until_idle timeout=120
+python -m superbond2 do drop_all item=oak_logs
+python -m superbond2 do click_nearest name=bank
+```
+
+Each prints *OK* or *NO* and what changed. **This moves the mouse**, so stop skillbot first,
+and keep your hand near the mouse: a corner stops it.
+
+Clicking the bank opens the bank screen, which the eyes can't read yet, so expect
+*nothing changed* there (press esc to close it: `do press key=esc`).
 
 ## The simulated game
 

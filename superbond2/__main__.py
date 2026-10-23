@@ -3,6 +3,9 @@
     python -m superbond2 calibrate     # find the RuneLite canvas on the screen (log in first)
     python -m superbond2 look          # what the eyes see right now; draws look.png
     python -m superbond2 sim           # the same for the simulated game; draws sim.png
+    python -m superbond2 do click_nearest name=oak_tree    # one action, on the real client
+
+Mouse into any screen corner stops superbond2 (the kill switch).
 
 Pictures can show the account name, so they're kept out of git (.gitignore).
 """
@@ -58,6 +61,27 @@ def look(_args) -> int:
     return 0
 
 
+def do_action(args) -> int:
+    from .actions import ACTIONS, Actions, do
+    from .hands import RealBody, Stopped
+    from .screen import Screen
+    if args.action not in {a["function"]["name"] for a in ACTIONS}:
+        print("Actions: " + ", ".join(a["function"]["name"] for a in ACTIONS))
+        return 1
+    kw = {}
+    for pair in args.args:
+        key, _, value = pair.partition("=")
+        kw[key] = int(value) if value.isdigit() else value
+    screen = Screen.load(ORIGIN)
+    try:
+        result = do(Actions(RealBody(screen), Eyes()), args.action, kw)
+    except Stopped as e:
+        print(f"Stopped: {e}")
+        return 1
+    print(("OK  " if result.ok else "NO  ") + result.said)
+    return 0 if result.ok else 1
+
+
 def sim(_args) -> int:
     from .sim import lumbridge
     game, eyes = lumbridge(), Eyes()
@@ -78,6 +102,10 @@ def main(argv=None) -> int:
     sub = p.add_subparsers(dest="command", required=True)
     for name, fn in (("calibrate", calibrate), ("look", look), ("sim", sim)):
         sub.add_parser(name).set_defaults(fn=fn)
+    d = sub.add_parser("do", help="one action on the real client, e.g. do click_nearest name=bank")
+    d.add_argument("action")
+    d.add_argument("args", nargs="*", help="key=value, e.g. name=oak_tree or seconds=10")
+    d.set_defaults(fn=do_action)
     args = p.parse_args(argv)
     return args.fn(args)
 
