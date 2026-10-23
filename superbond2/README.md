@@ -218,7 +218,26 @@ to listen on `0.0.0.0`, see [bench/README.md](../bench/README.md)). `--turns` (5
   got stuck clicking the bank at the end. About 15-30 s a turn once loaded; the first turn
   took 3 minutes (loading the model).
 
-Neither wrote a routine in 15 turns. The bake-off decides the real model.
+Neither wrote a routine in 15 turns. Then routines got the simple form and the nudge, and
+he got his personality:
+
+- **granite4.1:8b, 25 turns:** set a goal (oaks now, Vampire Slayer next), chopped by hand,
+  got *First oak logs ever!*, and on turn 6 **wrote his own routine** without being shown
+  one: *chop and drop oaks*, the same shape as the example. He ran it 7 times, 7 worked (about
+  60 actions each, one turn apiece), mixed in some chopping by hand, and when the journal
+  reminder came wrote:
+
+  > The best part so far has been the satisfying rhythm of chopping oaks and watching the
+  > inventory fill up, knowing each log brings me closer to the Vampire Slayer milestone. The
+  > quick drops and the clear progress on the tree highlight make each session rewarding.
+
+  What the run turned up, all fixed since: he wrote names with spaces ("oak logs"), which
+  actions didn't accept; he once called run_routine with a routine he hadn't saved (now it's
+  saved and run); and a routine that drops what it gathers was reported as "nothing changed"
+  and told to "try something else" (summaries now list what came in along the way). About
+  40 s a turn, with other work sharing the CPU.
+
+The bake-off decides the real model.
 
 ## The simulated game
 

@@ -49,7 +49,8 @@ bottom.
 - [x] Survival reflexes: eat below his threshold, in code, before every turn and after every routine action
 - [x] First runs with real models on the simulated game (granite4.1 3b and 8b): see [superbond2/README.md](superbond2/README.md#first-runs-simulated-game-a-4-core-cloud-cpu)
 - [x] Routines he can write: a simple form (one-line steps, until, after, rounds) instead of nested YAML, and a ready `save_routine` handed to him when he does the same thing by hand three times
-- [ ] Routines he writes on his own, with no nudge: check what the chosen model does
+- [x] Routines he writes on his own: granite4.1:8b wrote one unprompted on turn 6 and ran it 7 times without a failure
+- [x] His personality: who he is, firsts celebrated, journal reminders
 - [ ] The account lock shared with skillbot
 - [ ] New routines only run unattended once proven (experimental while you watch)
 - [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying
