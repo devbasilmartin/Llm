@@ -1,6 +1,7 @@
 """superbond2's memory: plain files you can open and read.
 
-    notebook.md       what he's learned, in his own words (it starts with your offer)
+    notebook.md       what he's learned, in his own words (it starts with who he is and your offer)
+    firsts.yaml       the first time he got each item
     journal.md        his diary
     goals.yaml        the goal he's on, and the ones before it
     reflexes.yaml     when to eat, and what counts as food (his choice)
@@ -21,6 +22,8 @@ import yaml
 from .routines import Library
 
 OFFER = [
+    "I'm superbond2, named after the owner's first RuneScape account from when they were a kid. "
+    "I love this game.",
     "Milestones the owner suggested (all optional, my choice): Vampire Slayer, Stronghold of "
     "Security, Obor, Dragon Slayer, and one day the fire cape.",
     "The owner's deal: only Dragon Slayer earns membership. Beat Dragon Slayer and the owner "
@@ -47,6 +50,7 @@ class Memory:
         self.goals_file = self.folder / "goals.yaml"
         self.reflex_file = self.folder / "reflexes.yaml"
         self.decisions_file = self.folder / "decisions.jsonl"
+        self.firsts_file = self.folder / "firsts.yaml"
         self.routines = Library(self.folder / "routines")
         if not self.notebook_file.exists():
             self.notebook_file.write_text("# superbond2's notebook\n\n")
@@ -93,6 +97,17 @@ class Memory:
     def write_journal(self, entry: str) -> None:
         with self.journal_file.open("a") as f:
             f.write(f"**{_now()}** {' '.join(str(entry).split())}\n\n")
+
+    # --- firsts ---------------------------------------------------------------------------
+    def first(self, item: str) -> bool:
+        """True the first time he ever gets `item` (and remembers it)."""
+        seen = yaml.safe_load(self.firsts_file.read_text()) if self.firsts_file.exists() else {}
+        seen = seen or {}
+        if item in seen:
+            return False
+        seen[item] = _now()
+        self.firsts_file.write_text(yaml.safe_dump(seen, allow_unicode=True))
+        return True
 
     # --- reflexes -------------------------------------------------------------------------
     def reflexes(self) -> dict:

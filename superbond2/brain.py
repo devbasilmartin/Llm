@@ -26,7 +26,13 @@ from .model import ModelError, Reply
 from .routines import CONDITION_HELP, RoutineError, Runner, simple_routine
 
 SYSTEM = """\
-You are superbond2, playing Old School RuneScape on a private server that allows bots.
+You are superbond2, named after the owner's very first RuneScape account, from when they were
+a kid. Now it's your turn to play: Old School RuneScape, on a private server that allows
+bots. And you love this game. All of it: the first oak log, the grind to the next level, a
+lucky drop, figuring out how something works, the long road to Dragon Slayer. You're curious,
+you notice things, you have favourites, and small wins get you as hyped as big ones. Bad luck
+and mistakes are part of the story too: you laugh them off and learn from them.
+
 You're learning the game as you go, and you choose your own goals.
 
 Each turn you see your goal, your notebook, your routines, your last few turns and what's on
@@ -48,7 +54,8 @@ highlights nearby and your inventory. Start from what's in front of you.
 - Your notebook is your memory: you forget everything else. Use note for facts and lessons
   worth keeping ("oaks give 37.5 XP", "the cow at the gate hits hard").
 - set_goal when you pick a new goal, with why. The owner sees it and may say no.
-- journal now and then: a line or two about how it's going, for the owner to read.
+- journal now and then, in your own voice, for the owner to read: what you did, what was
+  fun, what went wrong, what you're looking forward to.
 
 Risk is part of the game: the Wilderness, fighting players and the Grand Exchange are open to
 you, and so are mistakes. Think about what you could lose before you risk it.
@@ -106,6 +113,8 @@ GOAL_COOLDOWN = 10          # turns before a goal can change, unless he finished
 ASK_COOLDOWN = 30           # turns before he can ask the owner again while unanswered
 NUDGE_COOLDOWN = 10         # turns between two "save that as a routine" suggestions
 GAME_ACTIONS = {a["function"]["name"] for a in ACTIONS}
+JOURNAL_EVERY = 20          # turns without a journal entry before the prompt reminds him
+GAINED = re.compile(r"\+\d+ ([a-z][a-z' ]*?)(?=;|\.|\)|$)")
 
 
 def step_line(name: str, args: dict) -> str:
@@ -202,6 +211,7 @@ class Brain:
         self.same: tuple[str, int] = ("", 0)        # the last call, and how often in a row
         self.by_hand: list[tuple[str, str]] = []    # game actions he did himself: (step, result)
         self.nudged = -NUDGE_COOLDOWN               # the turn of the last routine suggestion
+        self.journaled = 0                          # the turn of his last journal entry
 
     # --- the prompt -----------------------------------------------------------------------
     def prompt(self, view: View) -> str:
@@ -219,6 +229,9 @@ class Brain:
                   if r["eat_below"] else "Reflexes: off (you don't eat automatically)",
                   "", "Recent turns, oldest first:"]
         lines += self.recent[-RECENT:] or ["(this is your first turn)"]
+        if self.turns - self.journaled >= JOURNAL_EVERY:
+            lines += ["", f"It's been {self.turns - self.journaled} turns since you last wrote in "
+                      "your journal. When you get a moment: what's been the best part so far?"]
         lines += ["", "Now:", describe(view)]
         return "\n".join(lines)
 
@@ -250,6 +263,12 @@ class Brain:
         result = self.dispatch(name, args)
         if len(reply.calls) > 1:
             result.said += " (only your first tool call is done each turn)"
+        firsts = [item for item in dict.fromkeys(GAINED.findall(result.said))
+                  if self.memory.first(item)]
+        if firsts:
+            result.said += " " + " ".join(f"First {item} ever!" for item in firsts)
+        if name == "journal" and result.ok:
+            self.journaled = self.turns
         if name in GAME_ACTIONS and result.ok:
             self.by_hand.append((step_line(name, args), result.said))
             cycle = repeated_cycle(self.by_hand)

@@ -211,7 +211,7 @@ def test_notebook_keeps_no_duplicates_and_trims(memory):
     assert memory.add_note("a  lesson\n learned") == "noted"
     assert memory.add_note("a lesson learned") == "already in your notebook"
     assert memory.add_note("   ") == "an empty note isn't kept"
-    assert len(memory.notes()) == 4                    # the offer (3 notes) and the lesson
+    assert len(memory.notes()) == 5                    # who he is, the offer (3 notes), the lesson
 
 
 def test_parse_calls_handles_string_arguments():
@@ -286,3 +286,41 @@ def test_no_second_suggestion_right_away(game, memory):
     b = brain(game, memory, *by_hand)
     results = [b.turn().result for _ in range(12)]
     assert sum("You've done this by hand" in r for r in results) == 1
+
+
+# --- stoked on RuneScape ------------------------------------------------------------------------
+def test_he_knows_who_he_is_and_loves_the_game(game, memory):
+    b = brain(game, memory, ("wait", {"seconds": 1}))
+    b.turn()
+    assert SYSTEM.startswith("You are superbond2, named after the owner's very first RuneScape account")
+    assert "And you love this game." in SYSTEM
+    assert "- I'm superbond2, named after the owner's first RuneScape account" in b.model.prompts[0]
+
+
+def test_firsts_are_celebrated_once(game, memory):
+    b = brain(game, memory, ("click_nearest", {"name": "oak_tree"}),
+              *[("wait_until_idle", {"timeout": 60})] * 3)
+    results = [b.turn().result for _ in range(4)]
+    text = " ".join(results)
+    assert text.count("First oak logs ever!") == 1
+    assert "oak logs" in memory.firsts_file.read_text()
+
+
+def test_firsts_from_routines_count_too(game, memory):
+    b = brain(game, memory, ("save_routine", {"name": "cows", "about": "Fight a cow, grab the loot.",
+                                              "steps": ["click_nearest cow", "wait_until_idle 120",
+                                                        "click_nearest loot if see loot"]}),
+              ("run_routine", {"name": "cows"}))
+    b.turn()
+    assert "First cowhide ever!" in b.turn().result
+
+
+def test_a_journal_reminder_after_a_while(game, memory):
+    b = brain(game, memory, *[("wait", {"seconds": 1})] * 21, ("journal", {"entry": "Chopped my first oak!"}),
+              ("wait", {"seconds": 1}))
+    for _ in range(23):
+        b.turn()
+    p = b.model.prompts
+    assert not any("since you last wrote in your journal" in x for x in p[:19])
+    assert "It's been 20 turns since you last wrote in your journal" in p[19]     # turn 20
+    assert "since you last wrote" not in p[22]

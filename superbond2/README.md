@@ -187,9 +187,18 @@ unless he says it's done or can't be done (every change messages you); he can't 
 second question while the first is unanswered; repeating an action that changes nothing gets
 pointed out; 3 turns in a row without a usable tool call stops him.
 
+**Who he is.** superbond2 is named after your first RuneScape account, from when you were a
+kid, and he loves the game: the first oak log, the grind, a lucky drop, figuring things out.
+He's curious, has favourites, and gets as hyped about small wins as big ones; bad luck is part
+of the story. That's in his system prompt and the first line of his notebook. The game feeds
+it: the first time he ever gets an item, the result says so (*First oak logs ever!*,
+remembered in `firsts.yaml`), and after 20 turns without a journal entry the prompt asks him
+what's been the best part so far. (Whether he feels any of it, nobody can say; this is what
+he pays attention to and how he talks about it.)
+
 His memory is plain files (`data/memory/`, or `data/sim-memory/` with `--sim`):
-`notebook.md`, `journal.md`, `goals.yaml`, `reflexes.yaml`, `decisions.jsonl` and
-`routines/`. The notebook starts with your offer.
+`notebook.md`, `journal.md`, `goals.yaml`, `reflexes.yaml`, `firsts.yaml`,
+`decisions.jsonl` and `routines/`. The notebook starts with who he is and your offer.
 
 ```sh
 python -m superbond2 play --sim --model gemma4:12b      # on the simulated game
