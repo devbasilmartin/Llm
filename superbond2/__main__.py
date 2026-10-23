@@ -4,6 +4,7 @@
     python -m superbond2 look          # what the eyes see right now; draws look.png
     python -m superbond2 sim           # the same for the simulated game; draws sim.png
     python -m superbond2 do click_nearest name=oak_tree    # one action, on the real client
+    python -m superbond2 run my-routine.yaml               # a routine (add --sim to try it first)
 
 Mouse into any screen corner stops superbond2 (the kill switch).
 
@@ -82,6 +83,32 @@ def do_action(args) -> int:
     return 0 if result.ok else 1
 
 
+def run_routine(args) -> int:
+    from .actions import Actions
+    from .hands import RealBody, SimBody, Stopped
+    from .routines import Routine, RoutineError, Runner
+    try:
+        routine = Routine.from_yaml(Path(args.file).read_text())
+    except (OSError, RoutineError) as e:
+        print(f"Can't run it: {e}")
+        return 1
+    if args.sim:
+        from .sim import lumbridge
+        body = SimBody(lumbridge())
+    else:
+        from .screen import Screen
+        body = RealBody(Screen.load(ORIGIN))
+    try:
+        result = Runner(Actions(body, Eyes())).run(routine)
+    except Stopped as e:
+        print(f"Stopped: {e}")
+        return 1
+    for line in result.log:
+        print("  " + line)
+    print(("OK  " if result.ok else "NO  ") + result.said)
+    return 0 if result.ok else 1
+
+
 def sim(_args) -> int:
     from .sim import lumbridge
     game, eyes = lumbridge(), Eyes()
@@ -106,6 +133,10 @@ def main(argv=None) -> int:
     d.add_argument("action")
     d.add_argument("args", nargs="*", help="key=value, e.g. name=oak_tree or seconds=10")
     d.set_defaults(fn=do_action)
+    r = sub.add_parser("run", help="run a routine from a YAML file")
+    r.add_argument("file")
+    r.add_argument("--sim", action="store_true", help="on the simulated game, not the client")
+    r.set_defaults(fn=run_routine)
     args = p.parse_args(argv)
     return args.fn(args)
 

@@ -25,8 +25,11 @@ UNTAGGED = "untagged"
 
 
 def color_mask(img: np.ndarray, rgb, tol: int) -> np.ndarray:
-    diff = np.abs(img[..., :3].astype(np.int16) - np.asarray(rgb, dtype=np.int16))
-    return np.all(diff <= tol, axis=-1)
+    """Pixels within `tol` of `rgb` in every channel (OpenCV does it in C: this runs for
+    every registry color on every look)."""
+    lo = np.clip(np.asarray(rgb, np.int16) - tol, 0, 255).astype(np.uint8)
+    hi = np.clip(np.asarray(rgb, np.int16) + tol, 0, 255).astype(np.uint8)
+    return cv2.inRange(np.ascontiguousarray(img[..., :3]), lo, hi) > 0
 
 
 def find_blobs(img: np.ndarray, rgb, tol: int, region: Rect, min_pixels: int = 15) -> list[Rect]:
@@ -36,6 +39,8 @@ def find_blobs(img: np.ndarray, rgb, tol: int, region: Rect, min_pixels: int = 1
     pieces of one outline; the box is then taken from the real pixels, not the thickened
     ones."""
     mask = color_mask(region.crop(img), rgb, tol)
+    if not mask.any():
+        return []
     joined = cv2.dilate(mask.astype(np.uint8), np.ones((7, 7), np.uint8))
     n, labels = cv2.connectedComponents(joined, connectivity=8)
     found = []
@@ -99,13 +104,17 @@ class Eyes:
         self.hp_color = self.registry["status_hp"].rgb
         self._last_player = None
 
-    def look(self, img: np.ndarray) -> View:
+    def look(self, img: np.ndarray, before: np.ndarray | None = None) -> View:
+        """What's in `img`. Busy or idle comes from comparing the player with `before`, a
+        picture taken a moment earlier; without one, with the last picture looked at."""
+        if before is not None:
+            self.busy(before)
         view = View(in_game=self.in_game(img))
         if not view.in_game:
             self._last_player = None
             return view
         view.highlights = self.highlights(img)
-        view.inventory = [self.slot(img, i) for i in range(SLOTS)]
+        view.inventory = self.inventory(img)
         view.hp = self.hp(img)
         view.busy = self.busy(img)
         return view
@@ -127,24 +136,33 @@ class Eyes:
                 out.append(Highlight(c.name, c.category, box, int(np.hypot(cx - px, cy - py))))
         return sorted(out, key=lambda h: h.distance)
 
-    def slot(self, img: np.ndarray, i: int, min_pixels: int = 6) -> str | None:
-        """The tagged item in slot i, UNTAGGED for an item without a tag, None when empty.
+    def inventory(self, img: np.ndarray, min_pixels: int = 6) -> list[str | None]:
+        """Each slot's tagged item, UNTAGGED for an item without a tag, None when empty.
 
+        Each tag color is looked for once over the whole inventory, then counted per slot.
         Tag outlines hug the sprite and can poke a pixel or two out of the slot. An empty
         slot is flat panel with none of the black outline every item sprite has (measured
         by skillbot: empty slots have std ~2 and no dark pixels, items 50+)."""
-        s = self.layout.slot(i)
-        area = s.grow(2).crop(img)
-        best, best_n = None, min_pixels - 1
+        first, last = self.layout.slot(0).grow(2), self.layout.slot(SLOTS - 1).grow(2)
+        area = Rect(first.x, first.y, last.x + last.w - first.x, last.y + last.h - first.y)
+        boxes = [self.layout.slot(i).grow(2) for i in range(SLOTS)]
+        best = [(min_pixels - 1, None)] * SLOTS
         for name, rgb in self.items.items():
-            n = int(color_mask(area, rgb, self.item_tol).sum())
-            if n > best_n:
-                best, best_n = name, n
-        if best:
-            return best
-        a = s.crop(img)[..., :3]
-        flat = int((a.max(axis=-1) < 30).sum()) < 4 and float(a.std(axis=(0, 1)).mean()) < 8
-        return None if flat else UNTAGGED
+            mask = color_mask(area.crop(img), rgb, self.item_tol)
+            if not mask.any():
+                continue
+            for i, b in enumerate(boxes):
+                n = int(mask[b.y - area.y:b.y - area.y + b.h, b.x - area.x:b.x - area.x + b.w].sum())
+                if n > best[i][0]:
+                    best[i] = (n, name)
+        out = []
+        for i, (_, name) in enumerate(best):
+            if name is None:
+                a = self.layout.slot(i).crop(img)[..., :3]
+                flat = int((a.max(axis=-1) < 30).sum()) < 4 and float(a.std(axis=(0, 1)).mean()) < 8
+                name = None if flat else UNTAGGED
+            out.append(name)
+        return out
 
     def hp(self, img: np.ndarray) -> float | None:
         """How full the Status Bars health bar is. It fills from the bottom and RuneLite

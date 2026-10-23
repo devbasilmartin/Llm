@@ -63,6 +63,7 @@ class SimGame:
         self.doing: Thing | None = None      # what the player is chopping/mining/fighting
         self.deaths = 0
         self._next_action = 0.0
+        self._last_tick = 0.0                # the world moves on ticks; time in between
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
     # --- setting up a scene ---------------------------------------------------------------
@@ -96,8 +97,9 @@ class SimGame:
     def advance(self, seconds: float) -> None:
         """Let the world run: gathering, fighting, respawns, one tick at a time."""
         end = self.t + seconds
-        while self.t + TICK <= end + 1e-9:
-            self.t += TICK
+        while self._last_tick + TICK <= end + 1e-9:
+            self._last_tick += TICK
+            self.t = self._last_tick
             self._tick()
         self.t = end
 
@@ -198,9 +200,9 @@ class SimGame:
     def _draw_player(self, img) -> None:
         px, py = self.layout.player
         img[py - 12:py + 12, px - 6:px + 6] = PLAYER
-        if self.doing is not None:                # swing: the arm and tool move every tick,
-            dy = (-16, -6, 4)[int(round(self.t / TICK)) % 3]   # 3 steps, so looks 2 ticks
-            img[py + dy:py + dy + 12, px + 6:px + 18] = SPRITE   # apart still differ
+        if self.doing is not None:                # swing: the arm and tool sweep down
+            dy = int(-16 + 24 * (self.t % 1.8) / 1.8)            # smoothly, once per 3 ticks
+            img[py + dy:py + dy + 12, px + 6:px + 18] = SPRITE
 
     def _draw_item(self, img, i: int, item: str) -> None:
         s = self.layout.slot(i)

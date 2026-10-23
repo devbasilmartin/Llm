@@ -1,0 +1,13 @@
+name: chop oaks and bank
+about: Chop oaks until the inventory is full, then bank. Twice.
+steps:
+  - repeat: 2
+    do:
+      - repeat:
+        until: inventory full
+        do:
+          - if: idle and see oak_tree
+            then:
+              - click_nearest: oak_tree
+          - wait: 2
+      - click_nearest: bank

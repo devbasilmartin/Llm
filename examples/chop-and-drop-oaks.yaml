@@ -1,0 +1,13 @@
+name: chop and drop oaks
+about: Chop oaks until the inventory is full, then drop the logs. Three times.
+steps:
+  - repeat: 3
+    do:
+      - repeat:
+        until: inventory full
+        do:
+          - if: idle and see oak_tree
+            then:
+              - click_nearest: oak_tree
+          - wait: 2
+      - drop_all: oak_logs

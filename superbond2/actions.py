@@ -18,6 +18,7 @@ from .hands import KEYS, Body
 from .layout import SLOTS
 
 SETTLE = 1.2           # seconds to let a click take effect before looking again (2 ticks)
+GLANCE = 0.3           # the two pictures of one look are this far apart
 
 
 @dataclass
@@ -55,13 +56,21 @@ def changes(before: View, after: View) -> str:
 class Actions:
     def __init__(self, body: Body, eyes: Eyes):
         self.body, self.eyes = body, eyes
-        self.view = eyes.look(body.grab())
+        self.look()
 
     def look(self) -> View:
-        self.view = self.eyes.look(self.body.grab())
+        """A fresh View, from two pictures a moment apart: if the character moved between
+        them, he's busy. Comparing with an older look could land on the same frame of a
+        repeating animation (a swing every few ticks) and call a busy character idle."""
+        first = self.body.grab()
+        self.body.wait(GLANCE)
+        self.view = self.eyes.look(self.body.grab(), before=first)
         return self.view
 
     def _after(self, before: View, did: str, settle: float = SETTLE) -> Result:
+        """Look again after acting, and say what changed since `before`: the last look
+        reported, so a change that happened between two actions (or while he was
+        thinking) is reported once instead of falling through the gap."""
         self.body.wait(settle)
         after = self.look()
         return Result(True, f"{did}: {changes(before, after)}")
@@ -69,18 +78,18 @@ class Actions:
     # --- the actions ----------------------------------------------------------------------
     def click_nearest(self, name: str) -> Result:
         """Click the nearest highlight called `name` (a tree, a cow, the bank, loot...)."""
-        before = self.look()
-        target = before.nearest(name)
+        before, now = self.view, self.look()
+        target = now.nearest(name)
         if target is None:
-            seen = sorted({h.name for h in before.highlights})
+            seen = sorted({h.name for h in now.highlights})
             return Result(False, f"no {name} in sight (I can see: {', '.join(seen) or 'nothing'})")
         self.body.click(target.center)
         return self._after(before, f"clicked the nearest {name}")
 
     def click_item(self, item: str) -> Result:
         """Click the first inventory slot holding `item` (eat it, bury it, use it...)."""
-        before = self.look()
-        slots = before.slots_with(item)
+        before, now = self.view, self.look()
+        slots = now.slots_with(item)
         if not slots:
             return Result(False, f"no {item} in the inventory")
         self.body.click(self.eyes.layout.slot(slots[0]).center)
@@ -90,14 +99,14 @@ class Actions:
         """Click inventory slot 0-27 (left to right, top to bottom), whatever is in it."""
         if not 0 <= slot < SLOTS:
             return Result(False, f"there's no slot {slot}; slots are 0-{SLOTS - 1}")
-        before = self.look()
+        before = self.view
         self.body.click(self.eyes.layout.slot(slot).center)
         return self._after(before, f"clicked slot {slot}")
 
     def drop_all(self, item: str) -> Result:
         """Shift-click every slot holding `item` (needs RuneLite's shift-click drop)."""
-        before = self.look()
-        slots = before.slots_with(item)
+        before, now = self.view, self.look()
+        slots = now.slots_with(item)
         if not slots:
             return Result(False, f"no {item} in the inventory")
         for i in slots:
@@ -109,19 +118,19 @@ class Actions:
         """Press one key: space, esc, enter or 1-5 (dialogs, menus, closing things)."""
         if key not in KEYS:
             return Result(False, f"I can only press: {', '.join(sorted(KEYS))}")
-        before = self.look()
+        before = self.view
         self.body.key(key)
         return self._after(before, f"pressed {key}", settle=0.6)
 
     def wait(self, seconds: float) -> Result:
         """Do nothing for a while (at most 60 seconds) and see what changed."""
         seconds = max(0.6, min(float(seconds), 60))
-        before = self.look()
+        before = self.view
         return self._after(before, f"waited {seconds:g}s", settle=seconds)
 
     def wait_until_idle(self, timeout: float = 60) -> Result:
         """Wait until the character stops (inventory full, tree gone, fight over)."""
-        before = self.look()
+        before = self.view
         waited, idle_looks = 0.0, 0
         while waited < timeout:
             self.body.wait(1.2)

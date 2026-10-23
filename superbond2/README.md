@@ -1,7 +1,7 @@
 # superbond2
 
-The agent itself. So far: his **eyes**, his **hands** and a **simulated game** to build the
-rest against.
+The agent itself. So far: his **eyes**, his **hands**, his **routines** and a **simulated
+game** to build the rest against.
 See [ROADMAP.md](../ROADMAP.md) for the plan.
 
 ## What the eyes see
@@ -14,7 +14,9 @@ From one screenshot of the fixed-mode client:
 - **The inventory**, slot by slot: the tagged item, "untagged" for an item without an
   Inventory Tag (tools), or empty.
 - **HP**, from the Status Bars health bar.
-- **Busy or idle**: whether the character is animating (chopping, fighting, walking).
+- **Busy or idle**: whether the character is animating (chopping, fighting, walking). Each
+  look takes two pictures 0.3 s apart and compares them; comparing with an older look can
+  land on the same frame of a repeating swing and call a busy character idle.
 - **In game or not**: the stone frame around the 3D view is only there when you're logged in.
 
 The colors come from `colors.yaml`, a copy of skillbot's registry, so both bots use the same
@@ -78,9 +80,9 @@ He only presses space, esc, enter and 1-5, so he can't type in chat.
 | `wait seconds` | do nothing for up to a minute |
 | `wait_until_idle` | wait until the character stops |
 
-Every action looks before and after and says what changed, e.g. *clicked the nearest
-oak_tree: you're busy now*, or *idle after 41s: +12 oak logs; 1 oak tree gone*. That report
-is how he finds out whether something worked.
+Every action says what changed since he last looked, e.g. *clicked the nearest oak_tree:
+you're busy now*, or *idle after 41s: +12 oak logs; 1 oak tree gone*. That report is how he
+finds out whether something worked.
 
 ### Try the hands on the VM
 
@@ -98,6 +100,54 @@ and keep your hand near the mouse: a corner stops it.
 
 Clicking the bank opens the bank screen, which the eyes can't read yet, so expect
 *nothing changed* there (press esc to close it: `do press key=esc`).
+
+## His routines
+
+A routine is a short list of actions he writes in YAML, saves, and replays without thinking
+about every click ([examples/](../examples/)):
+
+```yaml
+name: chop oaks and bank
+about: Chop oaks until the inventory is full, then bank. Twice.
+steps:
+  - repeat: 2
+    do:
+      - repeat:
+        until: inventory full
+        do:
+          - if: idle and see oak_tree
+            then:
+              - click_nearest: oak_tree
+          - wait: 2
+      - click_nearest: bank
+```
+
+- **Steps:** any action (`click_nearest: oak_tree`), `repeat:` a number of times or `until:` a
+  condition, `if:`/`then:`/`else:`, and `stop:`.
+- **Conditions:** inventory full, inventory empty, free slots below N, idle, busy, hp below N%,
+  hp above N%, see *highlight*, have *item*, in game; joined with `and`, each can start with
+  `not`.
+- **It stops** at the end, at a `stop:`, when an action fails (saying which step and why), when
+  a reflex says so, or at its limits (300 actions and 30 minutes unless it says otherwise; a
+  repeat that does nothing is caught at once).
+- **Mistakes in what he writes** get a message that says what to fix, e.g. *there's no action
+  or step called 'fly'. Actions: click_nearest, ...*. He reads it and tries again.
+- **The library** keeps each routine with how it's gone: runs, worked, failed, and the last
+  result.
+
+### Try a routine
+
+```sh
+python -m superbond2 run examples/chop-and-drop-oaks.yaml --sim   # on the simulated game
+python -m superbond2 run examples/chop-and-drop-oaks.yaml         # on the real client
+```
+
+On the real client: stand at some oaks marked with Object Markers in the `oak_tree` color,
+with oak logs tagged (`oak_logs`) and shift-click drop on. It prints every step and what
+changed. Mouse into a corner stops it.
+
+Banking routines only work on the simulated game for now: on the real client, clicking the
+bank opens the bank screen, which the eyes can't read yet.
 
 ## The simulated game
 

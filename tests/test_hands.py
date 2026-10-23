@@ -35,13 +35,21 @@ def test_something_not_in_sight_says_what_is(act):
 
 def test_drop_all_and_eat(act, game):
     game.give("oak_logs", 5)
+    act.look()                                  # he sees them before he drops them
     r = act.drop_all("oak_logs")
     assert r.ok and "-5 oak logs" in r.said and act.view.items()["oak_logs"] == 0
     game.hp = 10
+    act.look()
     r = act.click_item("trout")
     assert r.ok and "-1 trout" in r.said and "HP 25% -> 42%" in r.said
     assert not act.click_item("lobster").ok
     assert not act.drop_all("lobster").ok
+
+
+def test_changes_since_his_last_look_are_reported_once(act, game):
+    game.give("oak_logs", 2)                    # appeared while he wasn't looking
+    assert "+2 oak logs" in act.wait(1).said
+    assert act.wait(1).said == "waited 1s: nothing changed"
 
 
 def test_esc_stops_chopping(act, game):
@@ -53,6 +61,7 @@ def test_esc_stops_chopping(act, game):
 
 def test_bank_and_loot_reports(act, game):
     game.give("oak_logs", 3)
+    act.look()
     r = act.click_nearest("bank")
     assert "-3 oak logs" in r.said and "-3 trout" in r.said
     act.click_nearest("cow")

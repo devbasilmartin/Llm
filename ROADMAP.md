@@ -43,7 +43,8 @@ bottom.
 - [x] Hands: mouse and keyboard in the VM (pyautogui) or the simulated game; kill switch (mouse in a corner); keys limited to space, esc, enter, 1-5
 - [x] Actions: click the nearest highlight, click an item or slot, drop all, press, wait, wait until idle; each reports what changed
 - [ ] Hands, checked on the real client (`python -m superbond2 do ...`)
-- [ ] Routines: a format with screen conditions, saving, and a runner
+- [x] Routines: YAML with repeat/if/stop and screen conditions, checked with messages that say what to fix, run with limits, saved in a library that keeps score
+- [ ] Banking on the real client: the eyes read the bank screen, actions deposit and withdraw
 - [ ] Brain loop: state → model → action, with the notebook, goals, journal and decision log
 - [ ] Survival reflexes with his thresholds; the account lock shared with skillbot
 - [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying
