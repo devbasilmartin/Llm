@@ -48,7 +48,8 @@ bottom.
 - [x] Brain loop: state → model → one tool call, with the notebook, goals, journal, decision log and his routines; limits on goal churn, repeated questions and repeating what does nothing
 - [x] Survival reflexes: eat below his threshold, in code, before every turn and after every routine action
 - [x] First runs with real models on the simulated game (granite4.1 3b and 8b): see [superbond2/README.md](superbond2/README.md#first-runs-simulated-game-a-4-core-cloud-cpu)
-- [ ] Getting him to write and use routines on his own
+- [x] Routines he can write: a simple form (one-line steps, until, after, rounds) instead of nested YAML, and a ready `save_routine` handed to him when he does the same thing by hand three times
+- [ ] Routines he writes on his own, with no nudge: check what the chosen model does
 - [ ] The account lock shared with skillbot
 - [ ] New routines only run unattended once proven (experimental while you watch)
 - [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying

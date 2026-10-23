@@ -183,3 +183,54 @@ def test_a_bad_routine_isnt_saved(tmp_path):
     with pytest.raises(RoutineError):
         lib.save("name: bad one\nabout: y\nsteps: [{fly: home}]")
     assert lib.names() == [] and lib.summary() == "(no routines saved yet)"
+
+
+# --- the simple form ----------------------------------------------------------------------
+from superbond2.routines import simple_routine, step_from_line  # noqa: E402
+
+
+@pytest.mark.parametrize("line, step", [
+    ("click_nearest oak_tree", {"click_nearest": "oak_tree"}),
+    ("  wait   2 ", {"wait": 2}),
+    ("wait 2.5", {"wait": 2}),
+    ("click_item trout if hp below 50%", {"if": "hp below 50%", "then": [{"click_item": "trout"}]}),
+    ("stop out of food if not have trout", {"if": "not have trout", "then": [{"stop": "out of food"}]}),
+    ("Drop_All oak_logs", {"drop_all": "oak_logs"}),
+])
+def test_one_line_steps(line, step):
+    assert step_from_line(line) == step
+
+
+@pytest.mark.parametrize("line, says", [
+    ("chop oak_tree", "no action called 'chop'"),
+    ("wait a bit", "wait needs a number"),
+    ("click_nearest", "needs something after it"),
+    ("", "is empty"),
+])
+def test_one_line_mistakes(line, says):
+    with pytest.raises(RoutineError, match=says):
+        step_from_line(line)
+
+
+def test_simple_form_shapes():
+    once = simple_routine("x y", "z", ["wait 1"])
+    assert once["steps"] == [{"wait": 1}]
+    loop = simple_routine("x y", "z", ["wait 1"], until="inventory full", after=["drop_all logs"], rounds=2)
+    assert loop["steps"] == [{"repeat": 2, "do": [
+        {"repeat": None, "until": "inventory full", "do": [{"wait": 1}]}, {"drop_all": "logs"}]}]
+    assert simple_routine("x y", "z", ["wait 1"], times=4)["steps"] == [{"repeat": 4, "do": [{"wait": 1}]}]
+    assert simple_routine("x y", "z", "wait 1; wait 2")["steps"] == [{"wait": 1}, {"wait": 2}]
+    with pytest.raises(RoutineError, match="at least one step"):
+        simple_routine("x y", "z", [])
+    for r in (once, loop):
+        Routine.from_dict(r)                    # they're real routines
+
+
+def test_a_simple_routine_runs():
+    r = Routine.from_dict(simple_routine(
+        "chop and drop oaks", "Chop oaks until full, then drop the logs.",
+        ["click_nearest oak_tree if idle and see oak_tree", "wait 2"],
+        until="inventory full", after=["drop_all oak_logs"], rounds=2))
+    result = runner(lumbridge(seed=4)).run(r)
+    assert result.ok, result.said
+    assert sum("dropped" in line for line in result.log) == 2

@@ -75,7 +75,7 @@ def test_his_first_prompt_has_the_offer_no_goal_and_what_he_sees(game, memory):
     assert "Your goal: none yet. Pick one with set_goal." in p
     assert "only Dragon Slayer earns membership" in p
     assert "I can only work with what I see on screen" in p
-    assert "(no routines saved yet)" in p and "(this is your first turn)" in p
+    assert "(none yet: anything you do by hand a few times" in p and "(this is your first turn)" in p
     assert "Highlighted nearby:" in p and p.index("Notebook:") < p.index("Now:")
 
 
@@ -101,7 +101,7 @@ def test_a_goal_note_and_journal_are_kept_and_shown(game, memory):
 def test_he_writes_a_routine_runs_it_and_it_keeps_score(game, memory):
     b = brain(game, memory, ("save_routine", {"routine": CHOP_AND_DROP}),
               ("run_routine", {"name": "chop and drop oaks"}), ("wait", {"seconds": 1}))
-    assert b.turn().result == "saved routine 'chop and drop oaks'"
+    assert b.turn().result.startswith("saved routine 'chop and drop oaks'")
     t = b.turn()
     assert t.ok and "chop and drop oaks: done after" in t.result
     b.turn()
@@ -226,3 +226,63 @@ def test_repeating_something_that_does_nothing_is_pointed_out(game, memory):
     results = [b.turn().result for _ in range(3)]
     assert results[1] == "waited 1s: nothing changed"
     assert results[2].endswith("(that's 3 times in a row with nothing changing: try something else)")
+
+
+# --- writing his own routines ---------------------------------------------------------------
+import re  # noqa: E402
+
+from superbond2.brain import repeated_cycle, suggest  # noqa: E402
+
+
+def test_he_saves_a_routine_in_the_simple_form(game, memory):
+    b = brain(game, memory,
+              ("save_routine", {"name": "chop and drop oaks", "about": "Chop, then drop.",
+                                "steps": ["click_nearest oak_tree if idle and see oak_tree", "wait 2"],
+                                "until": "inventory full", "after": ["drop_all oak_logs"]}),
+              ("run_routine", {"name": "chop and drop oaks"}))
+    t = b.turn()
+    assert t.result == 'saved routine \'chop and drop oaks\'; start it with run_routine(name="chop and drop oaks")'
+    t = b.turn()
+    assert t.ok and "chop and drop oaks: done after" in t.result
+
+
+def test_a_bad_step_says_how_steps_look(game, memory):
+    b = brain(game, memory, ("save_routine", {"name": "chop", "about": "x", "steps": ["chop oak"]}))
+    t = b.turn()
+    assert not t.ok and "A step is an action and its argument, like 'click_nearest oak_tree'" in t.result
+
+
+def test_cycles_are_found_only_when_they_gain_something():
+    gain = [("click_nearest cow", "busy"), ("wait_until_idle 30", "idle after 9s: +1 cowhide")] * 3
+    assert [s for s, _ in repeated_cycle(gain)] == ["click_nearest cow", "wait_until_idle 30"]
+    assert repeated_cycle([("wait 2", "nothing changed")] * 3) is None
+    assert repeated_cycle(gain[:4]) is None
+    one = [("click_nearest tree", "busy; +1 logs")] * 3
+    assert [s for s, _ in repeated_cycle(one)] == ["click_nearest tree"]
+    assert '"click_nearest tree if see tree"' in suggest(repeated_cycle(one))
+
+
+def follow_the_suggestion(prompt):
+    """What a model that listens does: copy the suggested save_routine."""
+    m = re.search(r'save_routine\(name="([^"]+)", about="([^"]+)", steps=(\[.*?\]), until="([^"]+)"\)', prompt)
+    assert m, "no suggestion in the prompt"
+    return ("save_routine", {"name": m[1], "about": m[2], "steps": json.loads(m[3]), "until": m[4]})
+
+
+def test_doing_it_by_hand_three_times_gets_a_ready_routine(game, memory):
+    by_hand = [("click_nearest", {"name": "oak_tree"}), ("wait_until_idle", {"timeout": 60})] * 3
+    b = brain(game, memory, *by_hand, follow_the_suggestion, ("run_routine", {"name": "oak_tree loop"}))
+    results = [b.turn().result for _ in range(6)]
+    assert "You've done this by hand 3 times" in results[5]
+    assert not any("You've done this" in r for r in results[:5])
+    assert b.turn().ok                                       # he saves it
+    t = b.turn()                                             # and runs it
+    assert t.ok and "oak_tree loop: done after" in t.result
+    assert game.inventory.count("oak_logs") == 28 - 4         # chopped until full
+
+
+def test_no_second_suggestion_right_away(game, memory):
+    by_hand = [("click_nearest", {"name": "oak_tree"}), ("wait_until_idle", {"timeout": 60})] * 6
+    b = brain(game, memory, *by_hand)
+    results = [b.turn().result for _ in range(12)]
+    assert sum("You've done this by hand" in r for r in results) == 1

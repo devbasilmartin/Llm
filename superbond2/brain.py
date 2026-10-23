@@ -23,7 +23,7 @@ from .actions import ACTIONS, Actions, Result, do
 from .eyes import View, describe
 from .memory import Memory
 from .model import ModelError, Reply
-from .routines import CONDITION_HELP, RoutineError, Runner
+from .routines import CONDITION_HELP, RoutineError, Runner, simple_routine
 
 SYSTEM = """\
 You are superbond2, playing Old School RuneScape on a private server that allows bots.
@@ -34,22 +34,17 @@ screen now. Answer by calling exactly one tool. You can only act on what's on sc
 highlights nearby and your inventory. Start from what's in front of you.
 
 - Game actions do one thing and tell you what changed.
-- Routines repeat work without a turn per click. For anything you'll do more than a few
-  times, write one with save_routine and start it with run_routine. A routine is YAML:
-    name: chop and drop oaks
-    about: Chop oaks until the inventory is full, then drop the logs.
-    steps:
-      - repeat:
-        until: inventory full
-        do:
-          - if: idle and see oak_tree
-            then:
-              - click_nearest: oak_tree
-          - wait: 2
-      - drop_all: oak_logs
-  Steps: an action (click_nearest, click_item, click_slot, drop_all, press, wait,
-  wait_until_idle), repeat (a number, or until a condition) with do, if/then/else, stop.
-  Conditions: {conditions}; join with "and", start with "not".
+- Routines repeat work without a turn per step, so they're much faster than doing it by
+  hand. Anything you've done by hand a few times, save with save_routine and start with
+  run_routine. For example:
+    save_routine(name="chop and drop oaks",
+                 about="Chop oaks until the inventory is full, then drop the logs.",
+                 steps=["click_nearest oak_tree if idle and see oak_tree", "wait 2"],
+                 until="inventory full", after=["drop_all oak_logs"], rounds=3)
+  It does the steps over and over until `until` is true (or `times` times), then the
+  `after` steps once; all of that `rounds` times. A step is an action and its argument
+  ("click_nearest cow", "wait 2", "drop_all logs"), optionally followed by "if <condition>".
+  "stop <why>" ends the routine. Conditions: {conditions}; join with "and", start with "not".
 - Your notebook is your memory: you forget everything else. Use note for facts and lessons
   worth keeping ("oaks give 37.5 XP", "the cow at the gate hits hard").
 - set_goal when you pick a new goal, with why. The owner sees it and may say no.
@@ -76,8 +71,23 @@ def _spec(name: str, description: str, /, **params: str) -> dict:
 OWN_TOOLS = [
     _spec("run_routine", "Run one of your saved routines until it finishes or stops.",
           name="The routine's name."),
-    _spec("save_routine", "Save a routine (new, or a fixed version of an old one).",
-          routine="The routine, as YAML with name, about and steps."),
+    {"type": "function", "function": {
+        "name": "save_routine",
+        "description": "Save a routine (new, or a fixed version of an old one): do `steps` over "
+                       "and over until `until` (or `times` times), then `after` once; all of "
+                       "that `rounds` times.",
+        "parameters": {"type": "object", "required": ["name", "about", "steps"], "properties": {
+            "name": {"type": "string", "description": "A short name, e.g. chop and drop oaks."},
+            "about": {"type": "string", "description": "What it does, in a sentence."},
+            "steps": {"type": "array", "items": {"type": "string"},
+                      "description": "Steps like 'click_nearest oak_tree if idle', 'wait 2'."},
+            "until": {"type": "string", "description": "Stop repeating when this is true, "
+                                                       "e.g. inventory full."},
+            "times": {"type": "integer", "description": "Or: repeat the steps this many times."},
+            "after": {"type": "array", "items": {"type": "string"},
+                      "description": "Steps to do once after the repeating, e.g. 'drop_all logs'."},
+            "rounds": {"type": "integer", "description": "Do all of it this many times (default 1)."},
+        }}}},
     _spec("note", "Write something in your notebook to remember it.", text="The note."),
     _spec("set_goal", "Set your goal, and tell the owner why.", goal="The goal.",
           reason="Why, and how you'll get there."),
@@ -94,6 +104,41 @@ RECENT = 8                  # turns shown in the prompt
 NOTES_SHOWN = 40            # newest notes shown in the prompt
 GOAL_COOLDOWN = 10          # turns before a goal can change, unless he finished it or says why
 ASK_COOLDOWN = 30           # turns before he can ask the owner again while unanswered
+NUDGE_COOLDOWN = 10         # turns between two "save that as a routine" suggestions
+GAME_ACTIONS = {a["function"]["name"] for a in ACTIONS}
+
+
+def step_line(name: str, args: dict) -> str:
+    """A game action as a routine step: click_nearest {"name": "oak_tree"} -> 'click_nearest oak_tree'."""
+    return " ".join([name, *(str(v) for v in args.values())])
+
+
+def repeated_cycle(done: list[tuple[str, str]], times: int = 3) -> list[tuple[str, str]] | None:
+    """The shortest run of 1-3 steps that the last moves repeat `times` times in a row, if
+    those moves gained something (an item count went up). `done` is (step, result) pairs."""
+    for k in (1, 2, 3):
+        tail = done[-k * times:]
+        if len(tail) < k * times:
+            break
+        cycle = [step for step, _ in tail[:k]]
+        if all(tail[i][0] == cycle[i % k] for i in range(len(tail))) and \
+                any(re.search(r"\+\d+ ", result) for _, result in tail):
+            return tail[:k]
+    return None
+
+
+def suggest(cycle: list[tuple[str, str]]) -> str:
+    """A ready-to-use save_routine for a cycle he keeps doing by hand."""
+    steps = [step for step, _ in cycle]
+    target = steps[0].split(" ", 1)[-1].split(" if ")[0]
+    # clicking something that ran out fails the whole routine, so only click what's there
+    steps = [f"{st} if see {st.split(' ', 1)[1]}" if st.startswith("click_nearest ") and
+             " if " not in st else st for st in steps]
+    name = re.sub(r"[^a-z0-9 _'-]", "", f"{target} loop".lower())[:60]
+    call = (f'save_routine(name="{name}", about="{", then ".join(steps)}, until the inventory is '
+            f'full.", steps={json.dumps(steps)}, until="inventory full")')
+    return (f" (You've done this by hand 3 times: {'; '.join(steps)}. A routine does it "
+            f"without a turn per step. To save it: {call}. Then: run_routine(name=\"{name}\").)")
 
 
 class Model(Protocol):
@@ -155,6 +200,8 @@ class Brain:
         self.misses = 0                     # turns in a row without a usable tool call
         self.asked: tuple[str, int] | None = None   # an unanswered question, and its turn
         self.same: tuple[str, int] = ("", 0)        # the last call, and how often in a row
+        self.by_hand: list[tuple[str, str]] = []    # game actions he did himself: (step, result)
+        self.nudged = -NUDGE_COOLDOWN               # the turn of the last routine suggestion
 
     # --- the prompt -----------------------------------------------------------------------
     def prompt(self, view: View) -> str:
@@ -165,7 +212,9 @@ class Brain:
                  else "Your goal: none yet. Pick one with set_goal.",
                  "", "Notebook:"]
         lines += [f"- {n}" for n in m.notes()[-NOTES_SHOWN:]] or ["(empty)"]
-        lines += ["", "Your routines:", m.routines.summary(), "",
+        routines = (m.routines.summary() if m.routines.names() else
+                    "(none yet: anything you do by hand a few times is worth saving as one)")
+        lines += ["", "Your routines:", routines, "",
                   f"Reflexes: you eat {', '.join(r['food'])} automatically below {r['eat_below']}% HP"
                   if r["eat_below"] else "Reflexes: off (you don't eat automatically)",
                   "", "Recent turns, oldest first:"]
@@ -201,6 +250,14 @@ class Brain:
         result = self.dispatch(name, args)
         if len(reply.calls) > 1:
             result.said += " (only your first tool call is done each turn)"
+        if name in GAME_ACTIONS and result.ok:
+            self.by_hand.append((step_line(name, args), result.said))
+            cycle = repeated_cycle(self.by_hand)
+            if cycle and self.turns - self.nudged >= NUDGE_COOLDOWN:
+                result.said += suggest(cycle)
+                self.nudged, self.by_hand = self.turns, []
+        elif name in ("run_routine", "save_routine"):
+            self.by_hand = []                       # he's already using routines
         key = name + json.dumps(args, sort_keys=True)
         self.same = (key, self.same[1] + 1 if key == self.same[0] else 1)
         if self.same[1] >= 3 and result.said.endswith("nothing changed"):
@@ -220,8 +277,14 @@ class Brain:
                 m.routines.record(routine, run)
                 return Result(run.ok, run.said)
             if name == "save_routine":
-                routine = m.routines.save(str(args["routine"]))
-                return Result(True, f"saved routine '{routine.name}'")
+                if "routine" in args:                    # the YAML form, for longer routines
+                    routine = m.routines.save(str(args["routine"]))
+                else:
+                    routine = m.routines.save(simple_routine(
+                        args["name"], args.get("about", ""), args["steps"], args.get("until", ""),
+                        args.get("times", 0), args.get("after", ()), args.get("rounds", 1)))
+                return Result(True, f"saved routine '{routine.name}'; start it with "
+                              f"run_routine(name=\"{routine.name}\")")
             if name == "note":
                 return Result(True, m.add_note(args["text"]))
             if name == "set_goal":
@@ -264,7 +327,7 @@ class Brain:
         args = json.dumps(turn.args, ensure_ascii=False)
         short = args if len(args) <= 120 else args[:117] + "..."
         what = f"{turn.tool}({short})" if turn.tool else "(no tool)"
-        self.recent.append(f"{turn.number}. {what} -> {turn.result[:300]}")
+        self.recent.append(f"{turn.number}. {what} -> {turn.result[:800]}")
         self.memory.log({"turn": turn.number, "tool": turn.tool, "args": turn.args, "ok": turn.ok,
                          "result": turn.result, "seconds": round(turn.seconds, 1),
                          "thinking": (reply.thinking or reply.content)[:1000] if reply else "",

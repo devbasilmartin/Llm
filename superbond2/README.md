@@ -135,6 +135,25 @@ steps:
 - **The library** keeps each routine with how it's gone: runs, worked, failed, and the last
   result.
 
+**The simple form** is how he writes them (nested YAML inside a tool call is too fiddly for a
+small model): a list of one-line steps, what to repeat them until, and what to do after.
+
+```
+save_routine(name="chop and drop oaks",
+             about="Chop oaks until the inventory is full, then drop the logs.",
+             steps=["click_nearest oak_tree if idle and see oak_tree", "wait 2"],
+             until="inventory full", after=["drop_all oak_logs"], rounds=3)
+```
+
+A step is an action and its argument, optionally followed by `if <condition>`; `stop <why>`
+ends the routine. It becomes the same YAML as above, so YAML still works for anything longer.
+
+**He's nudged into writing them.** When he does the same 1-3 actions by hand three times in a
+row and it's gaining him something (an item count going up), the result of the third one
+says so and hands him a ready `save_routine` built from what he just did, with
+`if see <target>` on the clicks so the routine doesn't fail when a tree runs out. At most once
+every 10 turns.
+
 ### Try a routine
 
 ```sh
@@ -158,8 +177,9 @@ bank opens the bank screen, which the eyes can't read yet.
    action too.
 2. **The prompt:** his goal, notebook, routines (with how they've gone), reflexes, his last 8
    turns, and what the eyes see now.
-3. **One tool call:** a game action, `run_routine`, `save_routine`, `note`, `set_goal`,
-   `journal`, `ask_owner` or `set_reflexes`. Every mistake comes back as a message he can read.
+3. **One tool call:** a game action, `run_routine`, `save_routine` (the simple form),
+   `note`, `set_goal`, `journal`, `ask_owner` or `set_reflexes`. Every mistake comes back as a
+   message he can read.
 4. **Remembered:** in his recent turns and the decision log.
 
 A few rules keep a confused model from making a mess: a goal can't change within 10 turns

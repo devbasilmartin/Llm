@@ -141,7 +141,8 @@ class Actions:
                 return Result(True, f"idle after {waited:.0f}s: {changes(before, view)}")
         if self.view.busy is False:                # stopped right at the end
             return Result(True, f"idle after {waited:.0f}s: {changes(before, self.view)}")
-        return Result(False, f"still busy after {timeout:g}s: {changes(before, self.view)}")
+        # still going isn't a failure: a routine just carries on with its next step
+        return Result(True, f"still busy after {timeout:g}s: {changes(before, self.view)}")
 
 
 def _spec(action: str, description: str, /, **params: str) -> dict:

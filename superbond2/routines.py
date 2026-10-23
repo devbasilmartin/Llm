@@ -154,6 +154,62 @@ def parse_step(raw, depth: int, where: str) -> Step:
     return Step("action", f"{name}: {arg}", action=name, arg=arg)
 
 
+def step_from_line(line: str, where: str = "step") -> dict:
+    """One line of the simple form -> a step as YAML would have it:
+
+        "click_nearest oak_tree"                 -> {click_nearest: oak_tree}
+        "wait 2"                                 -> {wait: 2}
+        "click_item trout if hp below 50%"       -> {if: hp below 50%, then: [{click_item: trout}]}
+        "stop out of food if not have trout"     -> {if: not have trout, then: [{stop: out of food}]}
+    """
+    text = " ".join(str(line).split())
+    cond = None
+    if " if " in f" {text} ":
+        text, _, cond = f" {text} ".partition(" if ")
+        text, cond = text.strip(), cond.strip()
+    name, _, arg = text.partition(" ")
+    name, arg = name.strip().lower(), arg.strip()
+    if not name:
+        raise RoutineError(f"{where} is empty")
+    if name != "stop" and name not in ARG:
+        raise RoutineError(f"{where}: there's no action called {name!r}. A step is an action and "
+                           f"its argument, like 'click_nearest oak_tree' or 'wait 2', optionally "
+                           f"followed by 'if <condition>'. Actions: {', '.join(ACTION_NAMES)}, stop")
+    if name in INT_ACTIONS:
+        try:
+            arg = int(float(arg))
+        except ValueError:
+            raise RoutineError(f"{where}: {name} needs a number, like '{name} 2'") from None
+    elif not arg:
+        raise RoutineError(f"{where}: {name} needs something after it, like 'click_nearest oak_tree'")
+    step = {name: arg}
+    return {"if": cond, "then": [step]} if cond else step
+
+
+def simple_routine(name: str, about: str, steps: list[str], until: str = "", times: int = 0,
+                   after: list[str] = (), rounds: int = 1) -> dict:
+    """The simple form -> a routine as YAML would have it: do `steps` over and over until
+    `until` (or `times` times, or once), then `after` once; all of that `rounds` times."""
+    if isinstance(steps, str):
+        steps = [s for s in steps.replace(";", "\n").splitlines() if s.strip()]
+    if isinstance(after, str):
+        after = [s for s in after.replace(";", "\n").splitlines() if s.strip()]
+    if not steps:
+        raise RoutineError("steps must list at least one step, like ['click_nearest oak_tree if "
+                           "idle', 'wait 2']")
+    body = [step_from_line(line, f"steps[{i + 1}]") for i, line in enumerate(steps)]
+    times, rounds = int(times or 0), int(rounds or 1)
+    if until:
+        loop = [{"repeat": None, "until": str(until), "do": body}]
+    elif times > 1:
+        loop = [{"repeat": times, "do": body}]
+    else:
+        loop = body
+    loop += [step_from_line(line, f"after[{i + 1}]") for i, line in enumerate(after or [])]
+    all_steps = [{"repeat": rounds, "do": loop}] if rounds > 1 else loop
+    return {"name": str(name).strip().lower(), "about": str(about).strip(), "steps": all_steps}
+
+
 def count_steps(steps: list[Step]) -> int:
     return sum(1 + count_steps(s.then) + count_steps(s.other) for s in steps)
 
@@ -301,10 +357,10 @@ class Library:
     def path(self, name: str) -> Path:
         return self.folder / (re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") + ".yaml")
 
-    def save(self, text: str) -> Routine:
-        """Check a routine he wrote and keep it; raises RoutineError with what to fix.
-        Saving over an existing routine keeps its stats."""
-        routine = Routine.from_yaml(text)
+    def save(self, source: str | dict) -> Routine:
+        """Check a routine he wrote (YAML, or a dict like simple_routine makes) and keep it;
+        raises RoutineError with what to fix. Saving over an existing routine keeps its stats."""
+        routine = Routine.from_yaml(source) if isinstance(source, str) else Routine.from_dict(source)
         old = self.stats(routine.name)
         self._write(routine, old)
         return routine
