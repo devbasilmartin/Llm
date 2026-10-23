@@ -1,7 +1,7 @@
 # superbond2
 
-The agent itself. So far: his **eyes**, his **hands**, his **routines** and a **simulated
-game** to build the rest against.
+The agent itself: his **eyes**, **hands**, **routines** and **brain**, and a **simulated
+game** to build and test them against.
 See [ROADMAP.md](../ROADMAP.md) for the plan.
 
 ## What the eyes see
@@ -148,6 +148,48 @@ changed. Mouse into a corner stops it.
 
 Banking routines only work on the simulated game for now: on the real client, clicking the
 bank opens the bank screen, which the eyes can't read yet.
+
+## His brain
+
+`brain.py` is the loop. Each turn:
+
+1. **Reflexes:** below his eat threshold, with food in the inventory, code eats at once. He
+   sets the threshold and what counts as food (`set_reflexes`); routines check it after every
+   action too.
+2. **The prompt:** his goal, notebook, routines (with how they've gone), reflexes, his last 8
+   turns, and what the eyes see now.
+3. **One tool call:** a game action, `run_routine`, `save_routine`, `note`, `set_goal`,
+   `journal`, `ask_owner` or `set_reflexes`. Every mistake comes back as a message he can read.
+4. **Remembered:** in his recent turns and the decision log.
+
+A few rules keep a confused model from making a mess: a goal can't change within 10 turns
+unless he says it's done or can't be done (every change messages you); he can't ask you a
+second question while the first is unanswered; repeating an action that changes nothing gets
+pointed out; 3 turns in a row without a usable tool call stops him.
+
+His memory is plain files (`data/memory/`, or `data/sim-memory/` with `--sim`):
+`notebook.md`, `journal.md`, `goals.yaml`, `reflexes.yaml`, `decisions.jsonl` and
+`routines/`. The notebook starts with your offer.
+
+```sh
+python -m superbond2 play --sim --model gemma4:12b      # on the simulated game
+python -m superbond2 play --model gemma4:12b            # on the real client
+```
+
+`--host` defaults to `http://10.0.2.2:11434`, the Windows host as seen from the VM (Ollama has
+to listen on `0.0.0.0`, see [bench/README.md](../bench/README.md)). `--turns` (50) and
+`--minutes` (60) limit a session.
+
+### First runs (simulated game, a 4-core cloud CPU)
+
+- **granite4.1:3b** set a goal, then kept changing it (6 times in 12 turns), invented quest
+  items, asked the same question twice, and never touched the oaks in front of it. That's
+  what the goal and question limits and the "only what's on screen" line are for.
+- **granite4.1:8b** understood the deal, chopped oaks, waited, and banked the logs. It still
+  got stuck clicking the bank at the end. About 15-30 s a turn once loaded; the first turn
+  took 3 minutes (loading the model).
+
+Neither wrote a routine in 15 turns. The bake-off decides the real model.
 
 ## The simulated game
 

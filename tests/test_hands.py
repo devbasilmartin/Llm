@@ -173,3 +173,10 @@ def test_pyautoguis_own_failsafe_also_stops():
     gui.moveTo = boom
     with pytest.raises(Stopped):
         RealBody(FakeScreen(), gui=gui).click((5, 5))
+
+
+def test_wait_until_idle_never_says_busy_and_idle_at_once(act, game):
+    act.click_nearest("oak_tree")
+    for timeout in (2, 4, 6, 8, 10):
+        r = act.wait_until_idle(timeout=timeout)
+        assert not ("still busy" in r.said and "idle now" in r.said), r.said

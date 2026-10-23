@@ -45,8 +45,12 @@ bottom.
 - [ ] Hands, checked on the real client (`python -m superbond2 do ...`)
 - [x] Routines: YAML with repeat/if/stop and screen conditions, checked with messages that say what to fix, run with limits, saved in a library that keeps score
 - [ ] Banking on the real client: the eyes read the bank screen, actions deposit and withdraw
-- [ ] Brain loop: state → model → action, with the notebook, goals, journal and decision log
-- [ ] Survival reflexes with his thresholds; the account lock shared with skillbot
+- [x] Brain loop: state → model → one tool call, with the notebook, goals, journal, decision log and his routines; limits on goal churn, repeated questions and repeating what does nothing
+- [x] Survival reflexes: eat below his threshold, in code, before every turn and after every routine action
+- [x] First runs with real models on the simulated game (granite4.1 3b and 8b): see [superbond2/README.md](superbond2/README.md#first-runs-simulated-game-a-4-core-cloud-cpu)
+- [ ] Getting him to write and use routines on his own
+- [ ] The account lock shared with skillbot
+- [ ] New routines only run unattended once proven (experimental while you watch)
 - [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying
 - [ ] More eyes as needed: chat and NPC dialog, levels, minimap, open interfaces
 - [ ] Discord: goal posts and vetoes, ask_owner

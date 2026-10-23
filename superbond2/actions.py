@@ -139,6 +139,8 @@ class Actions:
             idle_looks = idle_looks + 1 if view.busy is False else 0
             if idle_looks >= 2:            # one still frame can be between two swings
                 return Result(True, f"idle after {waited:.0f}s: {changes(before, view)}")
+        if self.view.busy is False:                # stopped right at the end
+            return Result(True, f"idle after {waited:.0f}s: {changes(before, self.view)}")
         return Result(False, f"still busy after {timeout:g}s: {changes(before, self.view)}")
 
 
@@ -168,6 +170,8 @@ def do(actions: Actions, name: str, args: dict) -> Result:
     the brain hears about, not a crash."""
     if name not in {a["function"]["name"] for a in ACTIONS}:
         return Result(False, f"there's no action called {name}")
+    args = {k: int(v) if k in ("slot", "seconds", "timeout") and str(v).strip().isdigit() else v
+            for k, v in args.items()}                  # models often send "5" for 5
     try:
         return getattr(actions, name)(**args)
     except TypeError as e:

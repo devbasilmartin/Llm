@@ -5,6 +5,7 @@
     python -m superbond2 sim           # the same for the simulated game; draws sim.png
     python -m superbond2 do click_nearest name=oak_tree    # one action, on the real client
     python -m superbond2 run my-routine.yaml               # a routine (add --sim to try it first)
+    python -m superbond2 play --model gemma4:12b           # let him play (add --sim to try it first)
 
 Mouse into any screen corner stops superbond2 (the kill switch).
 
@@ -109,6 +110,30 @@ def run_routine(args) -> int:
     return 0 if result.ok else 1
 
 
+def play(args) -> int:
+    from .actions import Actions
+    from .brain import Brain
+    from .hands import RealBody, SimBody, Stopped
+    from .memory import Memory
+    from .model import Ollama
+    if args.sim:
+        from .sim import lumbridge
+        body, folder = SimBody(lumbridge()), DATA / "sim-memory"
+    else:
+        from .screen import Screen
+        body, folder = RealBody(Screen.load(ORIGIN)), DATA / "memory"
+    think = {"on": True, "off": False}.get(args.think, args.think) if args.think else None
+    model = Ollama(args.model, args.host, think=think)
+    brain = Brain(model, Actions(body, Eyes()), Memory(Path(args.memory) if args.memory else folder))
+    print(f"superbond2 is playing with {args.model}; memory in {brain.memory.folder}. "
+          "Mouse into a corner stops him.")
+    try:
+        print(brain.play(turns=args.turns, minutes=args.minutes))
+    except Stopped as e:
+        print(f"Stopped: {e}")
+    return 0
+
+
 def sim(_args) -> int:
     from .sim import lumbridge
     game, eyes = lumbridge(), Eyes()
@@ -137,6 +162,16 @@ def main(argv=None) -> int:
     r.add_argument("file")
     r.add_argument("--sim", action="store_true", help="on the simulated game, not the client")
     r.set_defaults(fn=run_routine)
+    pl = sub.add_parser("play", help="let superbond2 play")
+    pl.add_argument("--model", required=True, help="an Ollama model, e.g. gemma4:12b")
+    pl.add_argument("--host", default="http://10.0.2.2:11434",
+                    help="where Ollama is (default: the Windows host, seen from the VM)")
+    pl.add_argument("--sim", action="store_true", help="on the simulated game, not the client")
+    pl.add_argument("--turns", type=int, default=50)
+    pl.add_argument("--minutes", type=float, default=60)
+    pl.add_argument("--think", help="on, off, or low/medium/high for gpt-oss")
+    pl.add_argument("--memory", help="memory folder (default data/memory, or data/sim-memory)")
+    pl.set_defaults(fn=play)
     args = p.parse_args(argv)
     return args.fn(args)
 
