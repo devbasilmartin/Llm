@@ -1,2 +1,4 @@
 bench/results/
 __pycache__/
+data/
+*.png

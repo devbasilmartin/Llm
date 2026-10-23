@@ -29,6 +29,7 @@ bottom.
 - [ ] Check the server's rules on bots in PvP and on the Grand Exchange.
 - [ ] Run the bake-off at home ([bench/README.md](bench/README.md)) and send the results.
 - [ ] Note the PC's CPU and RAM (Task Manager → Performance).
+- [ ] Try the eyes on the VM ([superbond2/README.md](superbond2/README.md)) and send the output and look.png.
 
 ## Build order
 
@@ -37,12 +38,14 @@ bottom.
 - [ ] Run it on the PC and choose the model
 
 ### Phase 1: superbond2 v0
-- [ ] Eyes: find the RuneLite window, read highlight colors, inventory slots, HP, idle/animating
+- [x] Eyes: find the canvas on the desktop, highlights by name, inventory tags, HP, busy/idle, in game or not ([superbond2/](superbond2/))
+- [ ] Eyes, checked on the real client (`python -m superbond2 look`): boxes, HP, busy while chopping
 - [ ] Hands: mouse and keyboard in the VM, kill switch
 - [ ] Actions and routines: the action set, a routine format with screen conditions, a runner
 - [ ] Brain loop: state → model → action, with the notebook, goals, journal and decision log
 - [ ] Survival reflexes with his thresholds; the account lock shared with skillbot
-- [ ] A simulated game to test all of it without the client
+- [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying
+- [ ] More eyes as needed: chat and NPC dialog, levels, minimap, open interfaces
 - [ ] Discord: goal posts and vetoes, ask_owner
 - [ ] On the real client: one hour of a skill he picked (the v0 milestone)
 

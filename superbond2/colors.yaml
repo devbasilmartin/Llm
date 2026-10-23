@@ -1,0 +1,243 @@
+# Copied from skillbot (devbasilmartin/RuneScape, colors.yaml) so both bots read the same
+# RuneLite "bot" profile: keep the two files in step when colors change.
+#
+# The color registry: one name, one color, one meaning. Shared by all accounts (they
+# share RuneLite's `bot` profile). Use these names in config.yaml instead of [r, g, b].
+# Set each plugin's color to exactly these values, fully opaque.
+#
+# Rules (checked automatically):
+# - item colors (Inventory Tags) must all differ from each other
+# - world highlights must differ when they can be on screen together: same `area`
+#   (default if not given), or either one is `area: everywhere`. Minigames get their own area.
+# `python -m skillbot colors` lists the registry and free colors you can add.
+
+# --- banks and stations (Object Markers) ---
+bank:            {rgb: [255, 0, 255],   category: bank, area: everywhere}
+altar:           {rgb: [0, 192, 128],   category: station}
+range:           {rgb: [255, 64, 128],  category: station}
+furnace:         {rgb: [192, 255, 64],  category: station}
+anvil:           {rgb: [64, 0, 255],    category: station}
+
+# --- resources (Object Markers / NPC Indicators) ---
+tree:            {rgb: [64, 192, 255],   category: resource}
+oak_tree:        {rgb: [0, 192, 192],   category: resource}
+willow_tree:     {rgb: [0, 128, 192],   category: resource}
+fishing_spot:    {rgb: [0, 255, 128],   category: resource}
+rock:            {rgb: [255, 64, 0],    category: resource}
+
+# --- construction (Object Markers in your house) ---
+build_spot:      {rgb: [0, 192, 255],   category: station}  # the hotspot you build on
+
+# --- combat (NPC Indicators, Ground Items) ---
+cow:             {rgb: [255, 128, 255], category: enemy}
+enemy:           {rgb: [192, 64, 255],  category: enemy}
+loot:            {rgb: [255, 192, 0],   category: loot, area: everywhere}
+random_event:    {rgb: [128, 0, 0],     category: danger, area: everywhere}
+
+genie:           {rgb: [64, 255, 255],  category: other, area: everywhere}    # NPC Indicators: Genie (lamp)
+grave:           {rgb: [192, 0, 64],    category: other, area: everywhere}    # NPC Indicators: Grave
+respawn:         {rgb: [255, 64, 192],  category: other, area: everywhere}    # Ground Marker: your respawn tile
+other_player:    {rgb: [64, 192, 64],   category: other, area: everywhere}    # Player Indicators: others
+
+# --- runecrafting (Object Markers) ---
+ruins:           {rgb: [64, 255, 0],   category: portal}
+altar_portal:    {rgb: [128, 0, 192],   category: portal}
+
+# --- agility (Object Markers on each obstacle, in course order; long courses reuse them) ---
+obstacle_1:      {rgb: [0, 0, 255],     category: resource}
+obstacle_2:      {rgb: [0, 255, 64],    category: resource}
+obstacle_3:      {rgb: [192, 0, 255],   category: resource}
+obstacle_4:      {rgb: [255, 64, 64],   category: resource}
+obstacle_5:      {rgb: [192, 192, 64],  category: resource}
+obstacle_6:      {rgb: [64, 128, 255],  category: resource}
+obstacle_7:      {rgb: [128, 255, 64],  category: resource}
+mark_of_grace:   {rgb: [255, 192, 64],  category: loot}     # Ground Items / Agility plugin
+
+# --- route tiles (Ground Markers); a route uses each color at most once ---
+afk_spot:        {rgb: [0, 192, 64],    category: route}    # where to stand at crabs
+reset_spot:      {rgb: [64, 0, 192],    category: route}    # where to walk to reset aggression
+tile_plum:       {rgb: [128, 64, 192],  category: route}   # not white: that is the game's text color
+tile_lilac:      {rgb: [128, 128, 255], category: route}
+tile_blue:       {rgb: [0, 64, 255],    category: route}
+tile_lime:       {rgb: [128, 255, 0],   category: route}
+tile_lemon:      {rgb: [255, 255, 128], category: route}
+tile_mint:       {rgb: [64, 255, 64], category: route}
+tile_teal:       {rgb: [64, 255, 192],  category: route}
+fm_start:        {rgb: [128, 192, 0],   category: route}   # not yellow: overhead chat
+
+# --- navigation ---
+path:            {rgb: [255, 0, 128],   category: route, area: everywhere}   # Shortest Path: path color (scene + minimap)
+stairs:          {rgb: [192, 0, 192],   category: portal, area: everywhere}   # Object Markers: stairs on travel routes (Lumbridge castle)
+hub_marker:      {rgb: [192, 192, 0],   category: route, area: everywhere}   # Ground Marker on each hub's arrival tile
+
+# --- Inventory Tags ---
+logs:            {rgb: [0, 255, 0],     category: item}
+oak_logs:        {rgb: [0, 160, 0],     category: item}
+willow_logs:     {rgb: [128, 255, 128], category: item}
+raw_shrimps:     {rgb: [0, 128, 255],   category: item}
+raw_anchovies:   {rgb: [0, 0, 255],     category: item}
+shrimps:         {rgb: [255, 128, 0],   category: item}
+anchovies:       {rgb: [255, 200, 100], category: item}
+burnt_fish:      {rgb: [255, 0, 0],     category: item}
+copper_ore:      {rgb: [200, 100, 0],   category: item}
+tin_ore:         {rgb: [180, 180, 255], category: item}
+bronze_bar:      {rgb: [255, 255, 128], category: item}
+bones:           {rgb: [255, 255, 255], category: item}
+cowhide:         {rgb: [120, 60, 0],    category: item}
+trout:           {rgb: [128, 0, 255],   category: item}
+rune_essence:    {rgb: [255, 0, 128],   category: item}
+earth_rune:      {rgb: [0, 255, 160],   category: item}
+fire_rune:       {rgb: [255, 64, 255],  category: item}
+earth_talisman:  {rgb: [64, 0, 128],    category: item}
+fire_talisman:   {rgb: [0, 64, 64],     category: item}
+
+law_rune:        {rgb: [0, 0, 128],     category: item}
+nature_rune:     {rgb: [0, 64, 192],    category: item}
+air_rune:        {rgb: [0, 128, 64],    category: item}
+alch_item:       {rgb: [192, 64, 255],  category: item}    # whatever you're alching
+
+bagged_plant_1:  {rgb: [0, 64, 255],    category: item}
+oak_plank:       {rgb: [0, 128, 128],   category: item}
+mahogany_plank:  {rgb: [0, 192, 128],   category: item}
+watering_can:    {rgb: [0, 192, 192],   category: item}
+big_bones:       {rgb: [0, 64, 128],    category: item}
+shark:           {rgb: [0, 0, 192],     category: item}
+
+# --- plugin colors that aren't highlights ---
+status_hp:       {rgb: [255, 0, 0],     category: other, area: everywhere}
+yew_logs:        {rgb: [0, 128, 192], category: item}
+redwood_logs:    {rgb: [0, 192, 64], category: item}
+maple_logs:      {rgb: [0, 192, 255], category: item}
+magic_logs:      {rgb: [0, 255, 64], category: item}
+raw_trout:       {rgb: [0, 255, 255], category: item}
+raw_salmon:      {rgb: [64, 0, 192], category: item}
+raw_lobster:     {rgb: [64, 0, 255], category: item}
+raw_swordfish:   {rgb: [64, 64, 128], category: item}
+raw_tuna:        {rgb: [64, 64, 192], category: item}
+raw_shark:       {rgb: [64, 64, 255], category: item}
+lobster:         {rgb: [64, 128, 0], category: item}
+swordfish:       {rgb: [64, 128, 64], category: item}
+knife:           {rgb: [64, 128, 128], category: item}
+coin_pouch:      {rgb: [64, 128, 192], category: item}
+cooked_meat:     {rgb: [255, 160, 160], category: item}
+raw_beef:        {rgb: [255, 96, 160], category: item}
+yew_tree:        {rgb: [0, 0, 192], category: resource}
+redwood_tree:    {rgb: [0, 64, 192], category: resource}
+maple_tree:      {rgb: [0, 128, 255], category: resource}
+lobster_spot:    {rgb: [0, 192, 0], category: resource}
+harpoon_spot:    {rgb: [0, 255, 192], category: resource}
+knight:          {rgb: [64, 64, 192], category: resource}
+stall:           {rgb: [64, 64, 255], category: resource}
+chisel:          {rgb: [64, 128, 255], category: item}
+uncut_sapphire:  {rgb: [64, 192, 0], category: item}
+uncut_emerald:   {rgb: [64, 192, 64], category: item}
+uncut_ruby:      {rgb: [64, 192, 128], category: item}
+uncut_diamond:   {rgb: [64, 192, 192], category: item}
+uncut_dragonstone: {rgb: [64, 192, 255], category: item}
+glassblowing_pipe: {rgb: [64, 255, 0], category: item}
+molten_glass:    {rgb: [64, 255, 64], category: item}
+needle:          {rgb: [64, 255, 128], category: item}
+thread:          {rgb: [64, 255, 192], category: item}
+green_leather:   {rgb: [64, 255, 255], category: item}
+blue_leather:    {rgb: [128, 0, 0], category: item}
+red_leather:     {rgb: [128, 0, 64], category: item}
+black_leather:   {rgb: [128, 0, 128], category: item}
+guam_unf:        {rgb: [128, 0, 192], category: item}
+eye_of_newt:     {rgb: [128, 64, 64], category: item}
+tarromin_unf:    {rgb: [128, 64, 128], category: item}
+limpwurt_root:   {rgb: [128, 64, 192], category: item}
+ranarr_unf:      {rgb: [128, 64, 255], category: item}
+snape_grass:     {rgb: [128, 128, 0], category: item}
+irit_unf:        {rgb: [128, 128, 64], category: item}
+kwuarm_unf:      {rgb: [128, 128, 128], category: item}
+snapdragon_unf:  {rgb: [128, 128, 192], category: item}
+red_spiders_eggs: {rgb: [128, 128, 255], category: item}
+cadantine_unf:   {rgb: [128, 192, 0], category: item}
+white_berries:   {rgb: [128, 192, 64], category: item}
+dwarf_weed_unf:  {rgb: [128, 192, 128], category: item}
+wine_of_zamorak: {rgb: [128, 192, 192], category: item}
+lantadyme_unf:   {rgb: [128, 192, 255], category: item}
+potato_cactus:   {rgb: [128, 255, 0], category: item}
+toadflax_unf:    {rgb: [128, 255, 64], category: item}
+crushed_nest:    {rgb: [128, 255, 192], category: item}
+zmi_ladder:      {rgb: [64, 128, 192], category: portal}
+pure_essence:    {rgb: [128, 255, 255], category: item}
+ore_vein:        {rgb: [0, 0, 192], category: station, area: motherlode}
+hopper:          {rgb: [0, 0, 255], category: station, area: motherlode}
+mlm_sack:        {rgb: [0, 64, 192], category: station, area: motherlode}
+broken_strut:    {rgb: [0, 64, 255], category: station, area: motherlode}
+conveyor:        {rgb: [0, 0, 192], category: station, area: blast_furnace}
+bar_dispenser:   {rgb: [0, 0, 255], category: station, area: blast_furnace}
+bruma_tree:      {rgb: [0, 0, 192], category: station, area: wintertodt}
+lit_brazier:     {rgb: [0, 0, 255], category: station, area: wintertodt}
+broken_brazier:  {rgb: [0, 64, 192], category: station, area: wintertodt}
+unlit_brazier:   {rgb: [0, 64, 255], category: station, area: wintertodt}
+gangplank:       {rgb: [0, 0, 192], category: station, area: trawler}
+trawler_spot:    {rgb: [0, 0, 255], category: station, area: trawler}
+reward_net:      {rgb: [0, 64, 192], category: station, area: trawler}
+trap_full:       {rgb: [0, 0, 192], category: station, area: hunter}
+trap_ground:     {rgb: [0, 0, 255], category: station, area: hunter}
+trap_tile:       {rgb: [0, 64, 192], category: station, area: hunter}
+dark_altar:      {rgb: [0, 0, 192], category: station, area: arceuus}
+dense_runestone: {rgb: [0, 0, 255], category: station, area: arceuus}
+blood_altar:     {rgb: [0, 64, 192], category: station, area: arceuus}
+soul_altar:      {rgb: [0, 64, 255], category: station, area: arceuus}
+phials:          {rgb: [0, 0, 192], category: station, area: prayer}
+house_portal:    {rgb: [0, 0, 255], category: station, area: prayer}
+gilded_altar:    {rgb: [0, 64, 192], category: station, area: prayer}
+house_exit:      {rgb: [0, 64, 255], category: station, area: prayer}
+seed_table:      {rgb: [0, 0, 192], category: station, area: tithe}
+tithe_empty:     {rgb: [0, 0, 255], category: station, area: tithe}
+tithe_dry:       {rgb: [0, 64, 192], category: station, area: tithe}
+tithe_grown:     {rgb: [0, 64, 255], category: station, area: tithe}
+paydirt:         {rgb: [192, 0, 0], category: item}
+mlm_ore:         {rgb: [192, 0, 64], category: item}
+gold_ore:        {rgb: [192, 0, 128], category: item}
+gold_bar:        {rgb: [192, 0, 192], category: item}
+goldsmith_gauntlets: {rgb: [192, 0, 255], category: item}
+ice_gloves:      {rgb: [192, 64, 64], category: item}
+bruma_root:      {rgb: [192, 64, 128], category: item}
+box_trap:        {rgb: [192, 64, 192], category: item}
+red_chinchompa:  {rgb: [192, 128, 64], category: item}
+ensouled_head:   {rgb: [192, 128, 128], category: item}
+noted_bones:     {rgb: [192, 128, 192], category: item}
+bones_for_altar: {rgb: [192, 128, 255], category: item}
+dense_essence_block: {rgb: [192, 192, 0], category: item}
+dark_essence_block: {rgb: [192, 192, 64], category: item}
+dark_essence_fragments: {rgb: [192, 192, 128], category: item}
+hammer:          {rgb: [192, 192, 192], category: item}
+tinderbox:       {rgb: [192, 255, 0], category: item}
+tithe_seed:      {rgb: [192, 255, 64], category: item}
+gricollers_can:  {rgb: [192, 255, 128], category: item}
+tithe_fruit:     {rgb: [192, 255, 192], category: item}
+quest_target:    {rgb: [64, 192, 0], category: other, area: everywhere}
+quest_dialog:    {rgb: [64, 192, 128], category: other, area: everywhere}
+quest_item:      {rgb: [192, 255, 255], category: item}
+slayer_master:   {rgb: [64, 192, 192], category: other, area: everywhere}
+iron_ore:        {rgb: [255, 0, 64], category: item}
+salmon:          {rgb: [255, 0, 192], category: item}
+burnt_meat:      {rgb: [255, 128, 64], category: item}
+iron_bar:        {rgb: [255, 0, 255], category: item}
+steel_bar:       {rgb: [255, 64, 0], category: item}
+mithril_bar:     {rgb: [255, 64, 64], category: item}
+adamantite_bar:  {rgb: [255, 128, 255], category: item}
+bronze_dagger:   {rgb: [255, 192, 0], category: item}
+bronze_platebody: {rgb: [255, 192, 255], category: item}
+iron_platebody:  {rgb: [255, 255, 0], category: item}
+steel_platebody: {rgb: [255, 255, 64], category: item}
+mithril_platebody: {rgb: [255, 255, 192], category: item}
+adamant_platebody: {rgb: [0, 128, 0], category: item}
+mind_rune:       {rgb: [0, 192, 0], category: item}
+bronze_arrow:    {rgb: [0, 255, 128], category: item}
+iron_arrow:      {rgb: [0, 255, 192], category: item}
+leather:         {rgb: [192, 64, 0], category: item}
+leather_gloves:  {rgb: [192, 128, 0], category: item}
+leather_body:    {rgb: [255, 64, 128], category: item}
+air_talisman:    {rgb: [255, 64, 192], category: item}
+aubury:          {rgb: [64, 255, 128], category: other}
+essence_rock:    {rgb: [128, 0, 255], category: resource}
+essence_portal:  {rgb: [128, 64, 255], category: portal}
+tanner:          {rgb: [128, 192, 64], category: other}
+door:            {rgb: [192, 0, 0], category: portal, area: everywhere}   # Object Markers: doors on travel routes (the brass key door)
+ring_mould:      {rgb: [255, 128, 128], category: item}   # gold jewellery (kept)
+amulet_mould:    {rgb: [255, 128, 192], category: item}
