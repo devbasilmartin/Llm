@@ -1,11 +1,12 @@
 # Llm
 
-Learning how language models work by building and using them, aimed at a RuneScape agent
-for [skillbot](https://github.com/devbasilmartin/RuneScape): a local model that decides what
-to do next, while skillbot does the seeing and clicking.
+**superbond2**: a local language model that plays Old School RuneScape on a private server
+that allows bots. He learns the game as he goes, sets his own goals and makes his own
+mistakes. Alongside him, a learning track: small language models built from scratch.
 
-- [`bench/`](bench/): the model bake-off, which picks the agent's brain from the open models
+- [ROADMAP.md](ROADMAP.md): the decisions so far, and the build order.
+- [`bench/`](bench/): the model bake-off, which picks superbond2's brain from the open models
   that run on a CPU.
 
-Later: a small GPT written from scratch (character-level, trained on Shakespeare), and maybe
-the same thing in C.
+[skillbot](https://github.com/devbasilmartin/RuneScape) is the rule-based bot this started
+from; superbond2 uses it as a reference.

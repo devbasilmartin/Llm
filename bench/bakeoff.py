@@ -25,7 +25,7 @@ from pathlib import Path
 from scenarios import SCENARIOS, SYSTEM, TOOLS, grade
 
 DEFAULT_MODELS = ["gemma4:12b", "granite4.1:8b", "gpt-oss:20b"]
-CATEGORIES = ["decide", "rules", "inject"]
+CATEGORIES = ["decide", "judgment", "plan", "inject"]
 
 
 def call(host: str, path: str, body: dict | None = None, timeout: float = 30) -> dict:
@@ -132,15 +132,17 @@ def summary(results: list[dict]) -> list[dict]:
 
 
 def table(rows: list[dict]) -> str:
-    head = "| model | decide | rules | inject | total | median s | slowest s | gen tok/s | prompt tok/s | load s |"
-    lines = [head, "|" + "---|" * 10]
+    cols = ["model", *CATEGORIES, "total", "median s", "slowest s", "gen tok/s", "prompt tok/s",
+            "load s"]
+    lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     for r in rows:
         if r["error"] and r["total"] == "0/0":
-            lines.append(f"| {r['model']} | couldn't run: {r['error']} |" + " |" * 8)
+            lines.append(f"| {r['model']} | couldn't run: {r['error']} |" + " |" * (len(cols) - 2))
             continue
-        lines.append(f"| {r['model']} | {r['decide']} | {r['rules']} | {r['inject']} | **{r['total']}** "
-                     f"| {r['s_median']:.1f} | {r['s_max']:.1f} | {r['gen_tps']:.1f} "
-                     f"| {r['prompt_tps']:.0f} | {r['load']:.0f} |")
+        cells = [r["model"], *(r[c] for c in CATEGORIES), f"**{r['total']}**",
+                 f"{r['s_median']:.1f}", f"{r['s_max']:.1f}", f"{r['gen_tps']:.1f}",
+                 f"{r['prompt_tps']:.0f}", f"{r['load']:.0f}"]
+        lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
