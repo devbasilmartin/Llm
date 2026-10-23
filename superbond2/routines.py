@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import re
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -297,8 +298,14 @@ class Runner:
             ok, why = True, "done"
         except Finished as f:
             ok, why = f.ok, f.why
+        gained = Counter()                  # everything that came in along the way
+        for line in self.log:
+            for n, item in re.findall(r"\+(\d+) ([a-z][a-z' ]*?)(?=;|\.|\)|$)", line):
+                gained[item] += int(n)
+        got = "; ".join(f"+{n} {item}" for item, n in gained.most_common())
         said = (f"{routine.name}: {why} after {self.count} actions. "
-                f"Overall: {changes(start, act.view)}")
+                + (f"Gained along the way: {got}. " if got else "")
+                + f"Inventory now vs. before: {changes(start, act.view)}")
         return RunResult(ok, said, self.count, self.log)
 
     def _steps(self, steps: list[Step]) -> None:

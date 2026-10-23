@@ -334,3 +334,14 @@ def test_running_a_routine_he_hasnt_saved_yet_saves_it_first(game, memory):
     t = b.turn()
     assert t.ok and "chop and drop oaks: done after" in t.result
     assert memory.routines.names() == ["chop and drop oaks"]
+
+
+def test_a_routine_that_drops_what_it_gathers_isnt_called_stuck(game, memory):
+    routine = {"name": "chop and drop oaks", "about": "Chop, then drop.",
+               "steps": ["click_nearest oak_tree if idle and see oak_tree", "wait 2"],
+               "until": "inventory full", "after": ["drop_all oak logs"]}
+    b = brain(game, memory, ("save_routine", routine), *[("run_routine", {"name": "chop and drop oaks"})] * 3)
+    b.turn()
+    results = [b.turn().result for _ in range(3)]
+    assert all("Gained along the way: +" in r for r in results)
+    assert not any("try something else" in r for r in results)

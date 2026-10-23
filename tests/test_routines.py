@@ -239,3 +239,12 @@ def test_a_simple_routine_runs():
 def test_conditions_take_names_with_spaces():
     assert condition("have oak logs")(view(inventory=["oak_logs"] + [None] * 27))
     assert condition("idle and not see oak tree")(view())
+
+
+def test_the_summary_says_what_came_in_along_the_way():
+    r = Routine.from_dict(simple_routine(
+        "chop and drop oaks", "Chop, then drop.", ["click_nearest oak_tree if idle and see oak_tree", "wait 2"],
+        until="inventory full", after=["drop_all oak logs"]))
+    result = runner(lumbridge(seed=4)).run(r)
+    assert f"Gained along the way: +{SLOTS - 4} oak logs." in result.said
+    assert result.said.endswith("Inventory now vs. before: nothing changed")

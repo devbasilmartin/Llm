@@ -279,7 +279,7 @@ class Brain:
             self.by_hand = []                       # he's already using routines
         key = name + json.dumps(args, sort_keys=True)
         self.same = (key, self.same[1] + 1 if key == self.same[0] else 1)
-        if self.same[1] >= 3 and result.said.endswith("nothing changed"):
+        if self.same[1] >= 3 and name in GAME_ACTIONS and result.said.endswith("nothing changed"):
             result.said += (f" (that's {self.same[1]} times in a row with nothing changing: "
                             "try something else)")
         self.misses = 0 if name in TOOL_NAMES else self.misses + 1
