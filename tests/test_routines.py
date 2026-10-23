@@ -234,3 +234,8 @@ def test_a_simple_routine_runs():
     result = runner(lumbridge(seed=4)).run(r)
     assert result.ok, result.said
     assert sum("dropped" in line for line in result.log) == 2
+
+
+def test_conditions_take_names_with_spaces():
+    assert condition("have oak logs")(view(inventory=["oak_logs"] + [None] * 27))
+    assert condition("idle and not see oak tree")(view())

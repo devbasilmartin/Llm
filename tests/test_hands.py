@@ -180,3 +180,10 @@ def test_wait_until_idle_never_says_busy_and_idle_at_once(act, game):
     for timeout in (2, 4, 6, 8, 10):
         r = act.wait_until_idle(timeout=timeout)
         assert not ("still busy" in r.said and "idle now" in r.said), r.said
+
+
+def test_names_with_spaces_work_like_the_reports_say_them(act, game):
+    game.give("oak_logs", 2)
+    act.look()
+    assert act.drop_all("oak logs").ok
+    assert act.click_nearest("Oak Tree").ok

@@ -30,6 +30,11 @@ class Result:
         return self.said
 
 
+def as_name(text) -> str:
+    """'Oak logs' -> 'oak_logs': reports say names with spaces, the game data uses _."""
+    return "_".join(str(text).lower().split())
+
+
 def changes(before: View, after: View) -> str:
     """What's different between two looks, in words."""
     if not after.in_game:
@@ -78,6 +83,7 @@ class Actions:
     # --- the actions ----------------------------------------------------------------------
     def click_nearest(self, name: str) -> Result:
         """Click the nearest highlight called `name` (a tree, a cow, the bank, loot...)."""
+        name = as_name(name)
         before, now = self.view, self.look()
         target = now.nearest(name)
         if target is None:
@@ -88,6 +94,7 @@ class Actions:
 
     def click_item(self, item: str) -> Result:
         """Click the first inventory slot holding `item` (eat it, bury it, use it...)."""
+        item = as_name(item)
         before, now = self.view, self.look()
         slots = now.slots_with(item)
         if not slots:
@@ -105,6 +112,7 @@ class Actions:
 
     def drop_all(self, item: str) -> Result:
         """Shift-click every slot holding `item` (needs RuneLite's shift-click drop)."""
+        item = as_name(item)
         before, now = self.view, self.look()
         slots = now.slots_with(item)
         if not slots:

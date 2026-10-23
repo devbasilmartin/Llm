@@ -68,8 +68,8 @@ CONDITIONS: list[tuple[str, Callable]] = [
     (r"busy", lambda v: v.busy is True),
     (r"hp below (\d+)%", lambda v, n: v.hp is not None and v.hp * 100 < int(n)),
     (r"hp above (\d+)%", lambda v, n: v.hp is not None and v.hp * 100 > int(n)),
-    (r"see ([a-z0-9_]+)", lambda v, name: v.count(name) > 0),
-    (r"have ([a-z0-9_]+)", lambda v, item: bool(v.slots_with(item))),
+    (r"see ([a-z0-9_ ]+)", lambda v, name: v.count("_".join(name.split())) > 0),
+    (r"have ([a-z0-9_ ]+)", lambda v, item: bool(v.slots_with("_".join(item.split())))),
     (r"in game", lambda v: v.in_game),
 ]
 CONDITION_HELP = ("inventory full, inventory empty, free slots below N, idle, busy, "
