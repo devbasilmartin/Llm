@@ -324,3 +324,13 @@ def test_a_journal_reminder_after_a_while(game, memory):
     assert not any("since you last wrote in your journal" in x for x in p[:19])
     assert "It's been 20 turns since you last wrote in your journal" in p[19]     # turn 20
     assert "since you last wrote" not in p[22]
+
+
+def test_running_a_routine_he_hasnt_saved_yet_saves_it_first(game, memory):
+    b = brain(game, memory, ("run_routine", {"name": "chop and drop oaks", "about": "Chop, then drop.",
+                                             "steps": ["click_nearest oak_tree if idle and see oak_tree",
+                                                       "wait 2"],
+                                             "until": "inventory full", "after": ["drop_all oak logs"]}))
+    t = b.turn()
+    assert t.ok and "chop and drop oaks: done after" in t.result
+    assert memory.routines.names() == ["chop and drop oaks"]

@@ -291,6 +291,8 @@ class Brain:
         m = self.memory
         try:
             if name == "run_routine":
+                if "steps" in args:                     # a whole routine: save it, then run it
+                    self.dispatch("save_routine", args)
                 routine = m.routines.load(str(args["name"]))
                 run = Runner(self.actions, guard=self.reflexes).run(routine)
                 m.routines.record(routine, run)
