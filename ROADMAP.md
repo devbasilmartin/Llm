@@ -59,7 +59,7 @@ bottom.
 - [ ] On the real client: one hour of a skill he picked (the v0 milestone)
 
 ### Phase 2 and later
-- [ ] Wiki search as a tool
+- [x] The OSRS Wiki as tools: search, and read a page or section as plain text (polite: User-Agent, 1 request/s, a week's cache); the page stays in view for 6 turns, labeled as other people's writing
 - [ ] Travel, NPC dialogs and quests (Vampire Slayer first)
 - [ ] The Grand Exchange
 - [ ] Chat, after the injection results

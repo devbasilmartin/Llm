@@ -124,7 +124,10 @@ def play(args) -> int:
         body, folder = RealBody(Screen.load(ORIGIN)), DATA / "memory"
     think = {"on": True, "off": False}.get(args.think, args.think) if args.think else None
     model = Ollama(args.model, args.host, think=think)
-    brain = Brain(model, Actions(body, Eyes()), Memory(Path(args.memory) if args.memory else folder))
+    from .wiki import Wiki
+    wiki = None if args.no_wiki else Wiki(DATA / "wiki-cache")
+    brain = Brain(model, Actions(body, Eyes()), Memory(Path(args.memory) if args.memory else folder),
+                  wiki=wiki)
     print(f"superbond2 is playing with {args.model}; memory in {brain.memory.folder}. "
           "Mouse into a corner stops him.")
     try:
@@ -171,6 +174,7 @@ def main(argv=None) -> int:
     pl.add_argument("--minutes", type=float, default=60)
     pl.add_argument("--think", help="on, off, or low/medium/high for gpt-oss")
     pl.add_argument("--memory", help="memory folder (default data/memory, or data/sim-memory)")
+    pl.add_argument("--no-wiki", action="store_true", help="play without the OSRS Wiki")
     pl.set_defaults(fn=play)
     args = p.parse_args(argv)
     return args.fn(args)
