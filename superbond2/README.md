@@ -129,7 +129,7 @@ steps:
   `not`.
 - **It stops** at the end, at a `stop:`, when an action fails (saying which step and why), when
   a reflex says so, or at its limits (300 actions and 30 minutes unless it says otherwise; a
-  repeat that does nothing is caught at once).
+  repeat with nothing to do yet waits 2 s and tries again).
 - **Mistakes in what he writes** get a message that says what to fix, e.g. *there's no action
   or step called 'fly'. Actions: click_nearest, ...*. He reads it and tries again.
 - **The library** keeps each routine with how it's gone: runs, worked, failed, and the last

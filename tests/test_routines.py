@@ -124,10 +124,24 @@ steps:
     assert result.ok and "stopped (out of food) after 0 actions" in result.said
 
 
-def test_a_loop_without_actions_is_caught():
+def test_a_pass_with_nothing_to_do_waits_and_tries_again():
+    r = Routine.from_dict(simple_routine("oak loop", "Chop oaks as they grow back.",
+                                         ["click_nearest oak_tree"], until="inventory full"))
+    game = lumbridge(seed=3)
+    for t in game.things:
+        if t.name == "oak_tree":
+            t.gone_until = 20                      # both regrowing when it starts
+    result = runner(game).run(r)
+    assert result.ok, result.said
+    assert any("nothing to do yet" in line for line in result.log)
+    assert game.inventory.count("oak_logs") == SLOTS - 4
+
+
+def test_a_loop_that_never_does_anything_still_ends():
     r = Routine.from_yaml("""
 name: spin
 about: Never does anything.
+max_actions: 20
 steps:
   - repeat:
     until: inventory full
@@ -137,7 +151,7 @@ steps:
           - wait: 1
 """)
     result = runner(lumbridge()).run(r)
-    assert not result.ok and "did a pass without any action" in result.said
+    assert not result.ok and "limit of 20 actions" in result.said
 
 
 def test_limits_on_actions_and_time():

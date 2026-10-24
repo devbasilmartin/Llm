@@ -333,9 +333,8 @@ class Runner:
                 passes += 1
                 done = self.count
                 self._steps(step.then)
-                if self.count == done:
-                    raise Finished(False, f"`{step.text}` did a pass without any action, so it "
-                                          "would never change anything (add a wait?)")
+                if self.count == done:          # nothing to do yet (the tree is regrowing):
+                    self._act(Step("action", "wait: 2 (nothing to do yet)", action="wait", arg=2))
         else:
             self._act(step)
 
