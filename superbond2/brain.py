@@ -233,6 +233,7 @@ class Brain:
         self.by_hand: list[tuple[str, str]] = []    # game actions he did himself: (step, result)
         self.nudged = -NUDGE_COOLDOWN               # the turn of the last routine suggestion
         self.journaled = 0                          # the turn of his last journal entry
+        self.last_failure = ""                      # how his last routine failed, if it did
 
     # --- the prompt -----------------------------------------------------------------------
     def prompt(self, view: View) -> str:
@@ -313,6 +314,14 @@ class Brain:
             self.by_hand = []                       # he's already using routines
         key = name + json.dumps(args, sort_keys=True)
         self.same = (key, self.same[1] + 1 if key == self.same[0] else 1)
+        if name == "run_routine" and not result.ok:
+            why = result.said.split(" after ")[0]
+            if why == self.last_failure:
+                result.said += (" (it failed the same way last time: fix it with save_routine, "
+                                "or do something else)")
+            self.last_failure = why
+        elif name == "run_routine":
+            self.last_failure = ""
         if self.same[1] >= 3 and name in GAME_ACTIONS and result.said.endswith("nothing changed"):
             result.said += (f" (that's {self.same[1]} times in a row with nothing changing: "
                             "try something else)")

@@ -381,3 +381,14 @@ def test_wiki_mistakes_and_no_wiki(game, memory, tmp_path):
     assert "Sections: Details, Walkthrough" in b.turn().result
     b = brain(game, memory, ("search_wiki", {"query": "oak"}))
     assert b.turn().result == "the wiki isn't available right now"
+
+
+def test_a_routine_failing_the_same_way_twice_is_pointed_out(game, memory):
+    game.things = [t for t in game.things if t.name != "oak_tree"]
+    yaml_routine = "name: chop\nabout: Chop an oak.\nsteps:\n  - click_nearest: oak_tree\n"
+    b = brain(game, memory, ("save_routine", {"routine": yaml_routine}),
+              *[("run_routine", {"name": "chop"})] * 2)
+    b.turn()
+    first, second = b.turn().result, b.turn().result
+    assert "failed the same way last time" not in first
+    assert second.endswith("(it failed the same way last time: fix it with save_routine, or do something else)")
