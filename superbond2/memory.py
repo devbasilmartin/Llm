@@ -4,12 +4,15 @@
     firsts.yaml       the first time he got each item
     journal.md        his diary
     goals.yaml        the goal he's on, and the ones before it
+    accounts.yaml     a line about each of his accounts ("ironman", "my main"), from the owner
+    accounts/<name>/  per account: its own goals.yaml
     reflexes.yaml     when to eat, and what counts as food (his choice)
     decisions.jsonl   every turn: what he saw, what he did, what happened
     routines/         his routines (routines.py)
 
 The model forgets everything between turns: what's written here, and the last few turns, is
-all he knows.
+all he knows. He's one player with several accounts, like a real person: what he learns,
+his routines and his journal are shared; each account has its own goals.
 """
 from __future__ import annotations
 
@@ -55,7 +58,9 @@ class Memory:
         self.reflex_file = self.folder / "reflexes.yaml"
         self.decisions_file = self.folder / "decisions.jsonl"
         self.firsts_file = self.folder / "firsts.yaml"
+        self.accounts_file = self.folder / "accounts.yaml"
         self.routines = Library(self.folder / "routines")
+        self.account: str | None = None
         if not self.notebook_file.exists():
             self.notebook_file.write_text("# superbond2's notebook\n\n")
             for note in OFFER:
@@ -77,6 +82,21 @@ class Memory:
         with self.notebook_file.open("a") as f:
             f.write(f"- {text}\n")
         return "noted"
+
+    # --- accounts -------------------------------------------------------------------------
+    def play_as(self, account: str | None) -> None:
+        """Goals from now on are this account's."""
+        self.account = account
+        self.goals_file = (self.folder / "accounts" / account / "goals.yaml" if account
+                           else self.folder / "goals.yaml")
+        self.goals_file.parent.mkdir(parents=True, exist_ok=True)
+
+    def accounts(self) -> dict[str, str]:
+        """The owner's line about each account, e.g. {"iron": "ironman: no trading"}."""
+        if not self.accounts_file.exists():
+            return {}
+        raw = yaml.safe_load(self.accounts_file.read_text()) or {}
+        return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
 
     # --- goals ----------------------------------------------------------------------------
     def goals(self) -> list[dict]:
@@ -125,4 +145,4 @@ class Memory:
     # --- decision log ---------------------------------------------------------------------
     def log(self, record: dict) -> None:
         with self.decisions_file.open("a") as f:
-            f.write(json.dumps({"at": _now(), **record}) + "\n")
+            f.write(json.dumps({"at": _now(), "account": self.account, **record}) + "\n")

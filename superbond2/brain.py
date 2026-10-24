@@ -64,6 +64,9 @@ highlights nearby and your inventory. Start from what's in front of you.
 - set_goal when you pick a new goal, with why. The owner sees it and may say no.
 - journal now and then, in your own voice, for the owner to read: what you did, what was
   fun, what went wrong, what you're looking forward to.
+- If you have more than one account, they're all yours, like any player's: each has its own
+  goal, and everything you learn carries over. switch_character when you feel like playing
+  another one for a while: bored of this one, a goal that fits the other better, whatever.
 
 Risk is part of the game: the Wilderness, fighting players and the Grand Exchange are open to
 you, and so are mistakes. Think about what you could lose before you risk it.
@@ -120,6 +123,8 @@ OWN_TOOLS = [
     _spec("journal", "Write in your journal for the owner to read.", entry="A line or two."),
     _spec("ask_owner", "Ask the owner something. They may not answer soon.",
           question="The question."),
+    _spec("switch_character", "Log out and play another of your accounts for a while.",
+          name="The account to play.", reason="Why you feel like switching."),
     _spec("set_reflexes", "Change when you eat automatically, and what counts as food.",
           eat_below="Eat when HP is below this percent (0 turns it off).",
           food="Food item names, comma separated, e.g. trout, shrimps."),
@@ -133,6 +138,7 @@ ASK_COOLDOWN = 30           # turns before he can ask the owner again while unan
 NUDGE_COOLDOWN = 10         # turns between two "save that as a routine" suggestions
 GAME_ACTIONS = {a["function"]["name"] for a in ACTIONS}
 JOURNAL_EVERY = 20          # turns without a journal entry before the prompt reminds him
+SWITCH_COOLDOWN = 20        # turns on an account before he can switch again
 WIKI_TURNS = 6              # turns a wiki page he read stays in his prompt
 GAINED = re.compile(r"\+\d+ ([a-z][a-z' ]*?)(?=;|\.|\)|$)")
 
@@ -220,9 +226,12 @@ class Turn:
 class Brain:
     def __init__(self, model: Model, actions: Actions, memory: Memory, owner: Owner | None = None,
                  log: Callable[[str], None] = print, wiki: Wiki | None = None,
-                 session=None, character: str | None = None):
+                 session=None, character: str | None = None, accounts: list[str] | None = None):
         self.model, self.actions, self.memory = model, actions, memory
         self.session, self.character = session, character     # to log back in if dropped
+        self.accounts = accounts or ([character] if character else [])   # ones he may play
+        self.switched = 0                                     # the turn he last switched
+        memory.play_as(character)
         self.wiki = wiki
         self.reading: tuple[str, str, int] | None = None   # wiki page in view: where, text, turn
         self.owner = owner or Owner(log)
@@ -246,6 +255,13 @@ class Brain:
         lines = [f"Your goal: {goal['goal']} (why: {goal['reason']})" if goal
                  else "Your goal: none yet. Pick one with set_goal.",
                  "", "Notebook:"]
+        if self.character and len(self.accounts) > 1:
+            about = m.accounts()
+            def line(a: str) -> str:
+                return a + (f" ({about[a]})" if a in about else "")
+            others = ", ".join(line(a) for a in self.accounts if a != self.character)
+            lines[1:1] = ["", f"You're playing {line(self.character)}. Your other accounts: "
+                          f"{others}. switch_character to play one of them a while."]
         lines += [f"- {n}" for n in m.notes()[-NOTES_SHOWN:]] or ["(empty)"]
         routines = (m.routines.summary() if m.routines.names() else
                     "(none yet: anything you do by hand a few times is worth saving as one)")
@@ -385,6 +401,8 @@ class Brain:
                 self.asked = None if answer else (str(args["question"])[:200], self.turns)
                 return Result(True, f"the owner says: {answer}" if answer else
                               "no answer yet; carry on with your best judgment")
+            if name == "switch_character":
+                return self._switch(str(args["name"]).strip(), str(args.get("reason", "")))
             if name == "set_reflexes":
                 food = [f.strip().lower().replace(" ", "_") for f in str(args["food"]).split(",")
                         if f.strip()]
@@ -397,6 +415,36 @@ class Brain:
         except (TypeError, ValueError) as e:
             return Result(False, f"{name}: {e}")
         return do(self.actions, name, args)
+
+    def _switch(self, name: str, reason: str) -> Result:
+        if self.session is None or len(self.accounts) < 2:
+            return Result(False, "you only have this one account right now")
+        if name == self.character:
+            return Result(False, f"you're already playing {name}")
+        if name not in self.accounts:
+            return Result(False, f"no account called {name!r}; yours: {', '.join(self.accounts)}")
+        if self.turns - self.switched < SWITCH_COOLDOWN:
+            return Result(False, f"you switched {self.turns - self.switched} turns ago; give "
+                          f"{self.character} a fair go first")
+        was = self.character
+        try:
+            self.session.log_out()
+            self.session.log_in(name)
+        except LoginError as e:
+            try:
+                self.session.log_in(was)
+            except LoginError:
+                self.misses = 99
+            return Result(False, f"couldn't switch to {name}: {e}")
+        self.character, self.switched = name, self.turns
+        self.memory.play_as(name)
+        self.by_hand, self.last_failure, self.same = [], "", ("", 0)
+        self.recent.append(f"{self.turns}. --- switched from {was} to {name} ---")
+        self.owner.tell(f"Switched from {was} to {name}. Why: {reason}")
+        goal = self.memory.goal()
+        return Result(True, f"logged out of {was} and into {name}. " +
+                      (f"{name}'s goal: {goal['goal']}" if goal else
+                       f"{name} has no goal yet: pick one with set_goal"))
 
     def _record(self, turn: Turn, prompt: str, reply: Reply | None) -> Turn:
         args = json.dumps(turn.args, ensure_ascii=False)

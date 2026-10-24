@@ -237,23 +237,43 @@ The hover text position and the menu rows aren't measured on the real client yet
 
 ### Characters
 
-He can log into the characters skillbot already knows: each is a file
-`~/.config/skillbot/profiles/<name>.env` with `SKILLBOT_USERNAME` and `SKILLBOT_PASSWORD`.
-The login is typed by code (`characters.py`), never by him: usernames and passwords stay out
-of his prompt, his memory, the decision log and every message. He knows a character only by its
-profile name. Each character has its own memory (`data/memory/<name>/`); the wiki cache is
-shared. If he's disconnected, code logs him back in.
+He's one player with several accounts, like a real person. You start him on one; he plays one
+at a time and can `switch_character` to another when he feels like it (bored of this one, a
+goal that fits the other better), after giving each at least 20 turns. Everything he learns,
+his routines and his journal carry over; each account has its own goal. Put a line about
+each account in `data/memory/accounts.yaml` so he knows which is which:
+
+```yaml
+main: my main, the highest level
+iron: ironman (no trading, no Grand Exchange)
+```
+
+A character signs in one of two ways. Either way the login stays out of his prompt, his
+memory, the decision log and every message; he only knows a character by its name.
+
+- **Through the launcher (Bolt, Jagex-style accounts).** Start the character from Bolt, wait
+  for RuneLite's login screen, then `python -m superbond2 save-session iron`. That copies
+  the session Bolt gave RuneLite (its `JX_` variables, and the command that started it) into
+  `~/.config/superbond2/sessions/iron.json`, readable only by you. To log that character in
+  later, code closes RuneLite, starts it again with that session, and clicks Play. If a
+  session runs out, save it again from Bolt. Turn on RuneLite's *Remember client position*
+  so the window comes back where `calibrate` found it.
+- **With a password (legacy login).** skillbot's file `~/.config/skillbot/profiles/<name>.env`
+  with `SKILLBOT_USERNAME` and `SKILLBOT_PASSWORD`, typed into the login screen by code.
+
+If he's disconnected, code logs him back in.
 
 ```sh
-python -m superbond2 characters                     # who he can log into
+python -m superbond2 characters                     # who he can log into, and how
+python -m superbond2 save-session iron              # after starting iron from Bolt
 python -m superbond2 login main                     # log one in (logout logs out)
-python -m superbond2 play --model gemma4:12b --character main
-python -m superbond2 play --model gemma4:12b --characters main,alt,pure --minutes-each 60
+python -m superbond2 play --model gemma4:12b --character main          # may switch to any
+python -m superbond2 play --model gemma4:12b --characters main,iron    # only these two
 ```
 
 There's one client and one mouse, so he won't start while skillbot is running (`skillbot run`
-or its supervisor service). The login screen's button positions are skillbot's, not yet
-confirmed on the real client: watch the first login.
+or its supervisor service). The login screen's button positions are skillbot's (the launcher's Play
+button is a guess), not yet confirmed on the real client: watch the first login.
 
 ### First runs (simulated game, a 4-core cloud CPU)
 

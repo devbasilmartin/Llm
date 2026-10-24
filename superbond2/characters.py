@@ -1,23 +1,38 @@
 """superbond2's characters: logging in and out, and staying out of skillbot's way.
 
-The logins are skillbot's: one file per character in ~/.config/skillbot/profiles/<name>.env
-with SKILLBOT_USERNAME and SKILLBOT_PASSWORD. They're read here when logging in and go
-nowhere else: not into his prompt, his memory, the decision log or any message. He only
-ever knows a character by its profile name ("main", "alt").
+A character signs in one of two ways:
+
+- With a password (legacy login): skillbot's file ~/.config/skillbot/profiles/<name>.env
+  with SKILLBOT_USERNAME and SKILLBOT_PASSWORD, typed into the login screen.
+- Through the launcher (Bolt, with Jagex-style accounts): the launcher starts RuneLite with
+  the character's session in JX_* environment variables. `save-session` copies those, and
+  the command that started RuneLite, from the running client into
+  ~/.config/superbond2/sessions/<name>.json. Logging that character in later starts RuneLite
+  the same way and clicks Play.
+
+Logins and sessions are read here and go nowhere else: not into his prompt, his memory, the
+decision log or any message. He only ever knows a character by its name ("main", "iron").
 
 There's one client and one mouse, so superbond2 and skillbot can't both play: `claim`
 refuses while a skillbot run is going, and leaves a lock file while superbond2 plays.
 """
 from __future__ import annotations
 
+import json
 import os
+import re
+import signal
 import subprocess
+import time
 from pathlib import Path
 
 from .eyes import Eyes
 from .layout import Layout
 
 PROFILES = Path.home() / ".config" / "skillbot" / "profiles"
+SESSIONS = Path.home() / ".config" / "superbond2" / "sessions"
+NAME = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
+LAUNCH_WAIT = 25.0          # seconds for RuneLite to start and show its login screen
 
 
 class LoginError(Exception):
@@ -40,15 +55,55 @@ def read_env(path: Path) -> dict[str, str]:
     return out
 
 
+def _private_write(path: Path, text: str) -> None:
+    """Write a file only its owner can read, in a folder only its owner can open."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(path.parent, 0o700)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(text)
+    os.chmod(path, 0o600)
+
+
 class Characters:
-    def __init__(self, folder: Path = PROFILES):
-        self.folder = Path(folder)
+    def __init__(self, folder: Path = PROFILES, sessions: Path = SESSIONS):
+        self.folder, self.sessions = Path(folder), Path(sessions)
 
     def names(self) -> list[str]:
-        if not self.folder.is_dir():
+        out = set(self.launched())
+        if self.folder.is_dir():
+            out |= {p.stem for p in self.folder.glob("*.env")
+                    if {"SKILLBOT_USERNAME", "SKILLBOT_PASSWORD"} <= read_env(p).keys()}
+        return sorted(out)
+
+    def launched(self) -> list[str]:
+        """Characters that sign in through the launcher (a saved session)."""
+        if not self.sessions.is_dir():
             return []
-        return sorted(p.stem for p in self.folder.glob("*.env")
-                      if {"SKILLBOT_USERNAME", "SKILLBOT_PASSWORD"} <= read_env(p).keys())
+        return sorted(p.stem for p in self.sessions.glob("*.json"))
+
+    def save_session(self, name: str, pid: int, proc: Path = Path("/proc")) -> list[str]:
+        """Copy the session of the RuneLite running as `pid` (started by the launcher) for
+        `name`. Returns the names of the variables saved, never their values."""
+        if not NAME.match(name):
+            raise LoginError("a character name is letters, digits, - and _ (up to 32)")
+        here = Path(proc) / str(pid)
+        env = {}
+        for item in (here / "environ").read_bytes().split(b"\0"):
+            key, _, value = item.decode(errors="replace").partition("=")
+            if key.startswith("JX_"):
+                env[key] = value
+        if not env:
+            raise LoginError("that RuneLite wasn't started by the launcher (it has no JX_ "
+                             "session): start the character from Bolt, then save")
+        cmd = [a.decode(errors="replace") for a in (here / "cmdline").read_bytes().split(b"\0") if a]
+        cwd = os.readlink(here / "cwd")
+        _private_write(self.sessions / f"{name}.json",
+                       json.dumps({"cmd": cmd, "cwd": cwd, "env": env}, indent=1))
+        return sorted(env)
+
+    def _session(self, name: str) -> dict:
+        return json.loads((self.sessions / f"{name}.json").read_text())
 
     def _login(self, name: str) -> tuple[str, str]:
         path = self.folder / f"{name}.env"
@@ -61,11 +116,62 @@ class Characters:
         return env["SKILLBOT_USERNAME"], env["SKILLBOT_PASSWORD"]
 
 
-class Session:
-    """Logs characters in and out through the game's own login screen."""
+class Client:
+    """Starting and closing RuneLite, for characters that sign in through the launcher."""
 
-    def __init__(self, body, eyes: Eyes, characters: Characters, layout: Layout = Layout()):
+    def __init__(self, proc: Path = Path("/proc"), popen=subprocess.Popen):
+        self.proc, self.popen = Path(proc), popen
+
+    def running(self) -> list[int]:
+        """RuneLite processes: java running RuneLite, or RuneLite's own executable."""
+        out = []
+        for d in self.proc.glob("[0-9]*"):
+            try:
+                args = [a.decode(errors="replace") for a in (d / "cmdline").read_bytes().split(b"\0") if a]
+            except OSError:
+                continue
+            if not args or int(d.name) == os.getpid():
+                continue
+            exe = Path(args[0]).name.lower()
+            if "runelite" in exe or (exe.startswith("java") and
+                                     any("runelite" in a.lower() for a in args[1:])):
+                out.append(int(d.name))
+        return out
+
+    def newest(self) -> int | None:
+        def started(pid: int) -> int:
+            stat = (self.proc / str(pid) / "stat").read_text()
+            return int(stat.rsplit(")", 1)[1].split()[19])
+        pids = self.running()
+        return max(pids, key=started) if pids else None
+
+    def start(self, session: dict) -> None:
+        self.popen(session["cmd"], cwd=session.get("cwd") or None,
+                   env={**os.environ, **session["env"]}, stdin=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+    def stop(self, seconds: float = 15) -> None:
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            for pid in self.running():
+                try:
+                    os.kill(pid, sig)
+                except ProcessLookupError:
+                    pass
+            end = time.monotonic() + seconds
+            while self.running() and time.monotonic() < end:
+                time.sleep(0.5)
+            if not self.running():
+                return
+
+
+class Session:
+    """Logs characters in and out: through the game's own login screen, or by starting
+    RuneLite with a session the launcher made."""
+
+    def __init__(self, body, eyes: Eyes, characters: Characters, layout: Layout = Layout(),
+                 client: Client | None = None):
         self.body, self.eyes, self.characters, self.layout = body, eyes, characters, layout
+        self.client = client or Client()
         self.current: str | None = None
 
     def in_game(self) -> bool:
@@ -81,6 +187,8 @@ class Session:
         return self.in_game() == want
 
     def log_in(self, name: str, attempts: int = 3) -> None:
+        if name in self.characters.launched():
+            return self._launch_in(name, attempts)
         user, password = self.characters._login(name)
         if self.in_game():
             raise LoginError("already logged in; log out first")
@@ -103,6 +211,25 @@ class Session:
             b.wait(5.0)
         raise LoginError(f"couldn't log {name} in after {attempts} tries (wrong login, the server "
                          "down, or the login screen's buttons aren't where we think)")
+
+    def _launch_in(self, name: str, attempts: int) -> None:
+        if self.in_game():
+            raise LoginError("already logged in; log out first")
+        session = self.characters._session(name)
+        b, lay = self.body, self.layout
+        for _ in range(attempts):
+            self.client.stop()                  # whichever character's client was open
+            self.client.start(session)
+            b.wait(LAUNCH_WAIT)
+            b.click(lay.login_launcher_play)    # "Play" on a launcher-signed-in login screen
+            b.wait(8.0)
+            b.click(lay.login_play)             # "Click here to play"
+            if self._wait_for(True, 20):
+                self.current = name
+                return
+        raise LoginError(f"couldn't log {name} in through the launcher after {attempts} tries. "
+                         f"Its saved session may have run out: start {name} from Bolt and run "
+                         f"`python -m superbond2 save-session {name}` again")
 
     def log_out(self, attempts: int = 6) -> None:
         """From the logout tab. The game refuses for 10 seconds after combat, so it retries."""

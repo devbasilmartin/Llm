@@ -51,7 +51,9 @@ bottom.
 - [x] Routines he can write: a simple form (one-line steps, until, after, rounds) instead of nested YAML, and a ready `save_routine` handed to him when he does the same thing by hand three times
 - [x] Routines he writes on his own: granite4.1:8b wrote one unprompted on turn 6 and ran it 7 times without a failure
 - [x] His personality: who he is, firsts celebrated, journal reminders
-- [x] Characters: log into skillbot's profiles by name (credentials typed by code, never seen by him), memory per character, rotation with --characters, logged back in after a disconnect; won't start while skillbot runs
+- [x] Characters: log into skillbot's profiles by name (credentials typed by code, never seen by him), logged back in after a disconnect; won't start while skillbot runs
+- [x] Launcher characters: `save-session` keeps the session Bolt gives RuneLite (private file outside the repo); logging in restarts RuneLite with it and clicks Play
+- [x] One player, several accounts: he switches himself (`switch_character`, 20 turns minimum per account); shared notebook, routines and journal, a goal per account, the owner's line about each account in accounts.yaml
 - [ ] The login screen positions, confirmed on the real client
 - [x] Exploring: survey (hover text over the whole view), mark (Object Markers, in `marked`), inspect (what a highlight really is); RuneLite guide in docs/runelite.md
 - [ ] Hover text and menu reading, tuned on the real client (`python -m superbond2 hover`)

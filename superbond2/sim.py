@@ -76,8 +76,10 @@ class SimGame:
         self.deaths = 0
         self._next_action = 0.0
         self._last_tick = 0.0                # the world moves on ticks; time in between
-        # logging in: screen is "login", "welcome" (click here to play) or "game"
+        # logging in: screen is "login", "welcome" (click here to play) or "game"; with the
+        # launcher, "closed" (no client), then "title" (a Play button) and "welcome"
         self.screen = "game"
+        self.session_ok = True               # whether a launcher session still works
         self.accounts: dict[str, str] = {}   # username -> password the sim accepts
         self.player_name: str | None = None
         self._fields, self._field = ["", ""], None
@@ -198,6 +200,10 @@ class SimGame:
         if self.screen == "login" and abs(pt[0] - lay.login_existing_user[0]) <= 60 and \
                 abs(pt[1] - lay.login_existing_user[1]) <= 15:
             self._field = 0
+        elif self.screen == "title" and self.session_ok and \
+                abs(pt[0] - lay.login_launcher_play[0]) <= 60 and \
+                abs(pt[1] - lay.login_launcher_play[1]) <= 15:
+            self.screen = "welcome"
         elif self.screen == "welcome" and abs(pt[0] - lay.login_play[0]) <= 80 and \
                 abs(pt[1] - lay.login_play[1]) <= 20:
             self.screen = "game"

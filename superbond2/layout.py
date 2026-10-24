@@ -60,6 +60,7 @@ class Layout:
     logout_button: tuple[int, int] = (641, 432)         # "Click here to logout" in the logout tab
     login_existing_user: tuple[int, int] = (462, 291)   # "Existing User" on the login screen
     login_play: tuple[int, int] = (383, 324)            # "Click here to play" after logging in
+    login_launcher_play: tuple[int, int] = (383, 291)   # "Play" when the launcher signed in (a guess)
 
     @property
     def player(self) -> tuple[int, int]:

@@ -8,7 +8,8 @@
     python -m superbond2 play --model gemma4:12b           # let him play (add --sim to try it first)
     python -m superbond2 hover                             # read the hover text under the mouse
     python -m superbond2 characters                        # the characters he can log into
-    python -m superbond2 play --model gemma4:12b --characters main,alt --minutes-each 60
+    python -m superbond2 save-session iron                 # keep the session Bolt started
+    python -m superbond2 play --model gemma4:12b --character main  # he can switch to the others
 
 Mouse into any screen corner stops superbond2 (the kill switch).
 
@@ -121,38 +122,43 @@ def play(args) -> int:
     from .memory import Memory
     from .model import Ollama
     from .wiki import Wiki
-    names = [n.strip() for n in (args.characters or args.character or "").split(",") if n.strip()]
+    accounts = [n.strip() for n in (args.characters or "").split(",") if n.strip()]
+    start = args.character or (accounts[0] if accounts else None)
+    if start and not args.characters:
+        accounts = Characters().names()          # he may play any of them
+    if start and start not in accounts:
+        accounts.insert(0, start)
     if args.sim:
         from .sim import lumbridge
-        body, root = SimBody(lumbridge()), DATA / "sim-memory"
-        names = []
+        body, folder = SimBody(lumbridge()), DATA / "sim-memory"
+        start, accounts = None, []
     else:
         from .screen import Screen
-        body, root = RealBody(Screen.load(ORIGIN)), DATA / "memory"
+        body, folder = RealBody(Screen.load(ORIGIN)), DATA / "memory"
+    folder = Path(args.memory) if args.memory else folder
     think = {"on": True, "off": False}.get(args.think, args.think) if args.think else None
     model = Ollama(args.model, args.host, think=think)
     wiki = None if args.no_wiki else Wiki(DATA / "wiki-cache")
     eyes = Eyes()
-    session = Session(body, eyes, Characters()) if names else None
+    session = Session(body, eyes, Characters()) if start else None
     lock = DATA / "playing.lock"
     try:
         if not args.sim:
             claim(lock)
-        for i, name in enumerate(names or [None]):
-            if session is not None:
-                if session.in_game():
-                    session.log_out()
-                print(f"Logging in {name}...")
-                session.log_in(name)
-            folder = Path(args.memory) if args.memory else (root / name if name else root)
-            brain = Brain(model, Actions(body, eyes), Memory(folder), wiki=wiki,
-                          session=session, character=name)
-            print(f"superbond2 is playing{' ' + name if name else ''} with {args.model}; memory in "
-                  f"{folder}. Mouse into a corner stops him.")
-            minutes = args.minutes_each if len(names) > 1 else args.minutes
-            print(brain.play(turns=args.turns, minutes=minutes))
-            if session is not None and (len(names) > 1 or args.log_out):
+        if session is not None:
+            if session.in_game():
                 session.log_out()
+            print(f"Logging in {start}...")
+            session.log_in(start)
+        brain = Brain(model, Actions(body, eyes), Memory(folder), wiki=wiki,
+                      session=session, character=start, accounts=accounts)
+        others = [a for a in accounts if a != start]
+        print(f"superbond2 is playing{' ' + start if start else ''} with {args.model}; memory in "
+              f"{folder}." + (f" He can switch to: {', '.join(others)}." if others else "") +
+              " Mouse into a corner stops him.")
+        print(brain.play(turns=args.turns, minutes=args.minutes))
+        if session is not None and args.log_out:
+            session.log_out()
     except Stopped as e:
         print(f"Stopped: {e}")
     except LoginError as e:
@@ -183,13 +189,35 @@ def hover(_args) -> int:
 
 
 def characters(_args) -> int:
-    from .characters import PROFILES, Characters
-    names = Characters().names()
+    from .characters import PROFILES, SESSIONS, Characters
+    c = Characters()
+    names = c.names()
     if names:
-        print("Characters superbond2 can log into: " + ", ".join(names))
+        launched = set(c.launched())
+        print("Characters superbond2 can log into: " + ", ".join(
+            f"{n} ({'launcher' if n in launched else 'password'})" for n in names))
     else:
-        print(f"No characters yet. Each one is a file {PROFILES}/<name>.env with\n"
-              "  SKILLBOT_USERNAME=...\n  SKILLBOT_PASSWORD=...\n(the same files skillbot uses).")
+        print("No characters yet. Either:\n"
+              "- launcher: start the character from Bolt, then `python -m superbond2 save-session NAME`\n"
+              f"- password: a file {PROFILES}/<name>.env with SKILLBOT_USERNAME=... and "
+              "SKILLBOT_PASSWORD=... (the same files skillbot uses)")
+    print(f"(Launcher sessions are kept in {SESSIONS}.)")
+    return 0
+
+
+def save_session(args) -> int:
+    from .characters import SESSIONS, Characters, Client, LoginError
+    pid = Client().newest()
+    if pid is None:
+        print("RuneLite isn't running. Start the character from Bolt first.")
+        return 1
+    try:
+        keys = Characters().save_session(args.name, pid)
+    except (LoginError, OSError) as e:
+        print(f"Couldn't: {e}")
+        return 1
+    print(f"Saved {args.name}'s session ({', '.join(keys)}) in {SESSIONS}/{args.name}.json, "
+          "readable only by you.")
     return 0
 
 
@@ -249,11 +277,14 @@ def main(argv=None) -> int:
     pl.add_argument("--think", help="on, off, or low/medium/high for gpt-oss")
     pl.add_argument("--memory", help="memory folder (default data/memory, or data/sim-memory)")
     pl.add_argument("--no-wiki", action="store_true", help="play without the OSRS Wiki")
-    pl.add_argument("--character", help="log in this character first (a skillbot profile name)")
-    pl.add_argument("--characters", help="several, comma separated: each plays in turn")
-    pl.add_argument("--minutes-each", type=float, default=60, help="with --characters")
+    pl.add_argument("--character", help="start on this character; he can switch to the others")
+    pl.add_argument("--characters", help="only these may be played, comma separated "
+                                         "(default: all of them); he starts on the first")
     pl.add_argument("--log-out", action="store_true", help="log out at the end")
     sub.add_parser("characters", help="the characters he can log into").set_defaults(fn=characters)
+    ss = sub.add_parser("save-session", help="keep the session of the RuneLite Bolt just started")
+    ss.add_argument("name", help="what to call the character, e.g. main or iron")
+    ss.set_defaults(fn=save_session)
     li = sub.add_parser("login", help="log a character in")
     li.add_argument("name")
     li.set_defaults(fn=login)
