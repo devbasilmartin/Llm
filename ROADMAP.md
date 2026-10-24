@@ -51,7 +51,8 @@ bottom.
 - [x] Routines he can write: a simple form (one-line steps, until, after, rounds) instead of nested YAML, and a ready `save_routine` handed to him when he does the same thing by hand three times
 - [x] Routines he writes on his own: granite4.1:8b wrote one unprompted on turn 6 and ran it 7 times without a failure
 - [x] His personality: who he is, firsts celebrated, journal reminders
-- [ ] The account lock shared with skillbot
+- [x] Characters: log into skillbot's profiles by name (credentials typed by code, never seen by him), memory per character, rotation with --characters, logged back in after a disconnect; won't start while skillbot runs
+- [ ] The login screen positions, confirmed on the real client
 - [ ] New routines only run unattended once proven (experimental while you watch)
 - [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying
 - [ ] More eyes as needed: chat and NPC dialog, levels, minimap, open interfaces

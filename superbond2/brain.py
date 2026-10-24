@@ -24,6 +24,7 @@ from .eyes import View, describe
 from .memory import Memory
 from .model import ModelError, Reply
 from .routines import CONDITION_HELP, RoutineError, Runner, simple_routine
+from .characters import LoginError
 from .wiki import Wiki, WikiError
 
 SYSTEM = """\
@@ -215,8 +216,10 @@ class Turn:
 
 class Brain:
     def __init__(self, model: Model, actions: Actions, memory: Memory, owner: Owner | None = None,
-                 log: Callable[[str], None] = print, wiki: Wiki | None = None):
+                 log: Callable[[str], None] = print, wiki: Wiki | None = None,
+                 session=None, character: str | None = None):
         self.model, self.actions, self.memory = model, actions, memory
+        self.session, self.character = session, character     # to log back in if dropped
         self.wiki = wiki
         self.reading: tuple[str, str, int] | None = None   # wiki page in view: where, text, turn
         self.owner = owner or Owner(log)
@@ -261,6 +264,15 @@ class Brain:
     def turn(self) -> Turn:
         self.turns += 1
         view = self.actions.look()
+        if not view.in_game and self.session is not None and self.character:
+            try:                                # disconnected: code logs back in, not him
+                self.session.log_in(self.character)
+                self.recent.append(f"{self.turns}. you were logged out; logged back in")
+            except LoginError as e:
+                self.misses = 99                # nothing he can do about it: stop
+                return self._record(Turn(self.turns, "", {}, f"logged out, and logging back in "
+                                         f"failed: {e}", False, 0), "", None)
+            view = self.actions.look()
         stop = self.reflexes(view)
         if self.reflexes.last:
             self.recent.append(f"{self.turns}. {self.reflexes.last}")
@@ -395,6 +407,8 @@ class Brain:
             if time.monotonic() > deadline:
                 return f"stopped after {minutes:g} minutes"
             self.turn()
+            if self.misses >= 99:
+                return "stopped: logged out and couldn't log back in"
             if self.misses >= max_misses:
                 return f"stopped: {self.misses} turns in a row without a usable tool call"
         return f"stopped after {turns} turns"

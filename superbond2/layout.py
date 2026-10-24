@@ -50,6 +50,11 @@ class Layout:
         "combat": (538, 186), "skills": (571, 186), "quest": (604, 186), "inventory": (637, 186),
         "magic": (736, 186), "logout": (637, 484)})
 
+    # logging in and out (skillbot's values, not yet confirmed on the real client)
+    logout_button: tuple[int, int] = (641, 432)         # "Click here to logout" in the logout tab
+    login_existing_user: tuple[int, int] = (462, 291)   # "Existing User" on the login screen
+    login_play: tuple[int, int] = (383, 324)            # "Click here to play" after logging in
+
     @property
     def player(self) -> tuple[int, int]:
         """The camera keeps the player in the middle of the 3D view."""

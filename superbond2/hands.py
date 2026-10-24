@@ -46,6 +46,12 @@ class SimBody:
     def wait(self, seconds: float) -> None:
         self.game.advance(seconds)
 
+    def type_login(self, text: str) -> None:
+        self.game.type_text(text)
+
+    def press_login(self, key: str) -> None:
+        self.game.key(key)
+
 
 class RealBody:
     """The real client in the VM. Points are in canvas coordinates; `screen` (a Screen from
@@ -92,6 +98,19 @@ class RealBody:
             raise ValueError(f"superbond2 doesn't press {k!r}")
         self.check_kill_switch()
         self.gui.press(k)
+
+    def type_login(self, text: str) -> None:
+        """Type into the login screen. Only characters.py calls this: it's not an action, so
+        the brain can't type (no chat), and what's typed is never logged."""
+        self.check_kill_switch()
+        self.gui.write(text, interval=0.03)
+
+    def press_login(self, key: str) -> None:
+        """tab, enter or backspace on the login screen (characters.py only)."""
+        if key not in ("tab", "enter", "backspace", "esc"):
+            raise ValueError(f"not a login key: {key!r}")
+        self.check_kill_switch()
+        self.gui.press(key)
 
     def wait(self, seconds: float) -> None:
         end = time.monotonic() + seconds

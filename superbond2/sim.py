@@ -64,6 +64,12 @@ class SimGame:
         self.deaths = 0
         self._next_action = 0.0
         self._last_tick = 0.0                # the world moves on ticks; time in between
+        # logging in: screen is "login", "welcome" (click here to play) or "game"
+        self.screen = "game"
+        self.accounts: dict[str, str] = {}   # username -> password the sim accepts
+        self.player_name: str | None = None
+        self._fields, self._field = ["", ""], None
+        self._tab = "inventory"
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
     # --- setting up a scene ---------------------------------------------------------------
@@ -80,6 +86,16 @@ class SimGame:
 
     # --- input: the same things the hands do ----------------------------------------------
     def click(self, pt, shift: bool = False) -> None:
+        if self.screen != "game":
+            return self._click_login(pt)
+        for name, at in self.layout.tabs.items():
+            if abs(pt[0] - at[0]) <= 12 and abs(pt[1] - at[1]) <= 12:
+                self._tab = name
+                return
+        if self._tab == "logout" and abs(pt[0] - self.layout.logout_button[0]) <= 40 and \
+                abs(pt[1] - self.layout.logout_button[1]) <= 12:
+            self.screen, self.doing, self._tab = "login", None, "inventory"
+            return
         slot = self.layout.slot_at(pt)
         if slot is not None:
             return self._click_slot(slot, shift)
@@ -91,6 +107,17 @@ class SimGame:
         self.doing = None                     # clicked the ground: walk there, stop working
 
     def key(self, k: str) -> None:
+        if self.screen == "login" and self._field is not None:
+            if k == "tab":
+                self._field = 1 - self._field
+            elif k == "backspace":
+                self._fields[self._field] = self._fields[self._field][:-1]
+            elif k == "enter":
+                user, password = self._fields
+                if self.accounts.get(user) == password:
+                    self.screen, self.player_name = "welcome", user
+                self._fields, self._field = ["", ""], None
+            return
         if k == "esc":
             self.doing = None
 
@@ -102,6 +129,19 @@ class SimGame:
             self.t = self._last_tick
             self._tick()
         self.t = end
+
+    def type_text(self, text: str) -> None:
+        if self.screen == "login" and self._field is not None:
+            self._fields[self._field] += text
+
+    def _click_login(self, pt) -> None:
+        lay = self.layout
+        if self.screen == "login" and abs(pt[0] - lay.login_existing_user[0]) <= 60 and \
+                abs(pt[1] - lay.login_existing_user[1]) <= 15:
+            self._field = 0
+        elif self.screen == "welcome" and abs(pt[0] - lay.login_play[0]) <= 80 and \
+                abs(pt[1] - lay.login_play[1]) <= 20:
+            self.screen = "game"
 
     # --- what happens ---------------------------------------------------------------------
     def _put(self, item: str) -> bool:
@@ -177,6 +217,11 @@ class SimGame:
 
     # --- drawing --------------------------------------------------------------------------
     def grab(self) -> np.ndarray:
+        if self.screen != "game":                     # the login screen: no stone frame
+            img = np.full((CANVAS_H, CANVAS_W, 3), (20, 20, 20), np.uint8)
+            if self.screen == "welcome":
+                img[300:350, 300:470] = (120, 20, 20)  # the red "click here to play"
+            return img
         img = np.full((CANVAS_H, CANVAS_W, 3), PANEL, np.uint8)
         pts = self._frame
         img[pts[:, 1], pts[:, 0]] = pts[:, 2:]

@@ -217,6 +217,26 @@ python -m superbond2 play --model gemma4:12b            # on the real client
 to listen on `0.0.0.0`, see [bench/README.md](../bench/README.md)). `--turns` (50) and
 `--minutes` (60) limit a session.
 
+### Characters
+
+He can log into the characters skillbot already knows: each is a file
+`~/.config/skillbot/profiles/<name>.env` with `SKILLBOT_USERNAME` and `SKILLBOT_PASSWORD`.
+The login is typed by code (`characters.py`), never by him: usernames and passwords stay out
+of his prompt, his memory, the decision log and every message. He knows a character only by its
+profile name. Each character has its own memory (`data/memory/<name>/`); the wiki cache is
+shared. If he's disconnected, code logs him back in.
+
+```sh
+python -m superbond2 characters                     # who he can log into
+python -m superbond2 login main                     # log one in (logout logs out)
+python -m superbond2 play --model gemma4:12b --character main
+python -m superbond2 play --model gemma4:12b --characters main,alt,pure --minutes-each 60
+```
+
+There's one client and one mouse, so he won't start while skillbot is running (`skillbot run`
+or its supervisor service). The login screen's button positions are skillbot's, not yet
+confirmed on the real client: watch the first login.
+
 ### First runs (simulated game, a 4-core cloud CPU)
 
 - **granite4.1:3b** set a goal, then kept changing it (6 times in 12 turns), invented quest

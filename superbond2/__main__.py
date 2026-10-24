@@ -6,6 +6,8 @@
     python -m superbond2 do click_nearest name=oak_tree    # one action, on the real client
     python -m superbond2 run my-routine.yaml               # a routine (add --sim to try it first)
     python -m superbond2 play --model gemma4:12b           # let him play (add --sim to try it first)
+    python -m superbond2 characters                        # the characters he can log into
+    python -m superbond2 play --model gemma4:12b --characters main,alt --minutes-each 60
 
 Mouse into any screen corner stops superbond2 (the kill switch).
 
@@ -113,27 +115,80 @@ def run_routine(args) -> int:
 def play(args) -> int:
     from .actions import Actions
     from .brain import Brain
+    from .characters import Characters, LoginError, Session, claim, release
     from .hands import RealBody, SimBody, Stopped
     from .memory import Memory
     from .model import Ollama
+    from .wiki import Wiki
+    names = [n.strip() for n in (args.characters or args.character or "").split(",") if n.strip()]
     if args.sim:
         from .sim import lumbridge
-        body, folder = SimBody(lumbridge()), DATA / "sim-memory"
+        body, root = SimBody(lumbridge()), DATA / "sim-memory"
+        names = []
     else:
         from .screen import Screen
-        body, folder = RealBody(Screen.load(ORIGIN)), DATA / "memory"
+        body, root = RealBody(Screen.load(ORIGIN)), DATA / "memory"
     think = {"on": True, "off": False}.get(args.think, args.think) if args.think else None
     model = Ollama(args.model, args.host, think=think)
-    from .wiki import Wiki
     wiki = None if args.no_wiki else Wiki(DATA / "wiki-cache")
-    brain = Brain(model, Actions(body, Eyes()), Memory(Path(args.memory) if args.memory else folder),
-                  wiki=wiki)
-    print(f"superbond2 is playing with {args.model}; memory in {brain.memory.folder}. "
-          "Mouse into a corner stops him.")
+    eyes = Eyes()
+    session = Session(body, eyes, Characters()) if names else None
+    lock = DATA / "playing.lock"
     try:
-        print(brain.play(turns=args.turns, minutes=args.minutes))
+        if not args.sim:
+            claim(lock)
+        for i, name in enumerate(names or [None]):
+            if session is not None:
+                if session.in_game():
+                    session.log_out()
+                print(f"Logging in {name}...")
+                session.log_in(name)
+            folder = Path(args.memory) if args.memory else (root / name if name else root)
+            brain = Brain(model, Actions(body, eyes), Memory(folder), wiki=wiki,
+                          session=session, character=name)
+            print(f"superbond2 is playing{' ' + name if name else ''} with {args.model}; memory in "
+                  f"{folder}. Mouse into a corner stops him.")
+            minutes = args.minutes_each if len(names) > 1 else args.minutes
+            print(brain.play(turns=args.turns, minutes=minutes))
+            if session is not None and (len(names) > 1 or args.log_out):
+                session.log_out()
     except Stopped as e:
         print(f"Stopped: {e}")
+    except LoginError as e:
+        print(f"Can't go on: {e}")
+        return 1
+    finally:
+        if not args.sim:
+            release(lock)
+    return 0
+
+
+def characters(_args) -> int:
+    from .characters import PROFILES, Characters
+    names = Characters().names()
+    if names:
+        print("Characters superbond2 can log into: " + ", ".join(names))
+    else:
+        print(f"No characters yet. Each one is a file {PROFILES}/<name>.env with\n"
+              "  SKILLBOT_USERNAME=...\n  SKILLBOT_PASSWORD=...\n(the same files skillbot uses).")
+    return 0
+
+
+def login(args) -> int:
+    from .characters import Characters, LoginError, Session
+    from .hands import RealBody, Stopped
+    from .screen import Screen
+    session = Session(RealBody(Screen.load(ORIGIN)), Eyes(), Characters())
+    try:
+        if args.name:
+            session.log_in(args.name)
+            print(f"Logged in {args.name}.")
+        else:
+            session.log_out()
+            print("Logged out.")
+    except (LoginError, Stopped) as e:
+        print(f"Couldn't: {e}")
+        return 1
     return 0
 
 
@@ -175,6 +230,15 @@ def main(argv=None) -> int:
     pl.add_argument("--think", help="on, off, or low/medium/high for gpt-oss")
     pl.add_argument("--memory", help="memory folder (default data/memory, or data/sim-memory)")
     pl.add_argument("--no-wiki", action="store_true", help="play without the OSRS Wiki")
+    pl.add_argument("--character", help="log in this character first (a skillbot profile name)")
+    pl.add_argument("--characters", help="several, comma separated: each plays in turn")
+    pl.add_argument("--minutes-each", type=float, default=60, help="with --characters")
+    pl.add_argument("--log-out", action="store_true", help="log out at the end")
+    sub.add_parser("characters", help="the characters he can log into").set_defaults(fn=characters)
+    li = sub.add_parser("login", help="log a character in")
+    li.add_argument("name")
+    li.set_defaults(fn=login)
+    sub.add_parser("logout", help="log out").set_defaults(fn=login, name=None)
     pl.set_defaults(fn=play)
     args = p.parse_args(argv)
     return args.fn(args)
