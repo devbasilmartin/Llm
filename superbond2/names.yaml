@@ -1,0 +1,103 @@
+# Copied from skillbot (devbasilmartin/RuneScape, runelite/names.yaml): the in-game names
+# behind each registry color. superbond2 uses it to say what a highlight could be. Keep the
+# two files in step.
+#
+# In-game names for registry colors, used by `skillbot runelite-profile` to build the
+# RuneLite `bot` profile (docs/runelite-profile.md). Names are exactly as the game shows
+# them; add or fix any that don't match on your server.
+
+# NPC Indicators: every name is highlighted; each NPC's color is set by its ids (looked up
+# on the OSRS Wiki, or listed under npc_ids). The plugin's default color is `enemy`, so a
+# name whose ids can't be found is left out (and reported) unless it's an enemy.
+npcs:
+  enemy: [Hill Giant, Moss giant, Sand Crab, Ammonite Crab, Chicken, Goblin, Dwarf, Minotaur,
+          Lesser demon, Greater demon, Fire giant]
+  cow: [Cow, Cow calf]
+  fishing_spot: [Fishing spot, Rod Fishing spot]
+  knight: [Knight of Ardougne]
+  random_event: [Drunken Dwarf, Mysterious Old Man, Sergeant Damien, Evil Bob, Frog, Leo,
+                 Rick Turpentine, Sandwich lady, Strange plant, Freaky Forester, Bee keeper,
+                 Quiz Master, Pillory guard, Count Check, Dr Jekyll, Flippa, Niles, Miles,
+                 Giles, Postie Pete]
+  genie: [Genie]
+  grave: [Grave]
+  slayer_master: [Turael, Vannaka, Chaeldar, Nieve, Duradel]
+  phials: [Phials]
+
+# Fishing spots share one name, so their colors come from ids: RuneLite's FishingSpot list
+# (net/bait + lure/bait → fishing_spot, cage/harpoon → lobster_spot, net/harpoon →
+# harpoon_spot). Swordfish and tuna are caught at cage/harpoon spots, which are lobster_spot.
+npc_ids:
+  fishing_spot: [1514, 1517, 1518, 1521, 1523, 1524, 1525, 1528, 1530, 1544, 3913, 7155, 7459,
+                 7462, 7467, 7469, 7947, 10513, 12778, 14038, 14040, 14041, 14524, 15066, 16338,
+                 394, 1506, 1507, 1508, 1509, 1512, 1513, 1515, 1516, 1526, 1527, 1529, 3417,
+                 3418, 7463, 7464, 7468, 8524, 12774, 14036, 14521, 14522, 14525, 14526, 14527,
+                 14528, 15072, 15073]
+  lobster_spot: [1510, 1519, 1522, 2146, 3914, 5820, 7199, 7460, 7465, 7470, 7946, 9173, 9174,
+                 10515, 10635, 12777, 14039, 15070, 15071, 15075, 15076, 15079, 15084, 15086,
+                 16340]
+  harpoon_spot: [1511, 1520, 3419, 3915, 4476, 4477, 5233, 5234, 5821, 7200, 7461, 7466, 8525,
+                 8526, 8527, 9171, 9172, 10514, 12775, 12776, 14037, 14523, 15067, 15068, 15069,
+                 15077, 15080, 15082, 15083, 15087, 16339]
+
+# Object Markers: objects you mark (any color) are recolored by name, from an exported
+# profile (`--from`). Objects can't be generated outright: the plugin stores each one by
+# its exact tile. A name listed under two colors is left for you to color by hand.
+objects:
+  bank: [Bank booth, Bank chest, Bank, Grand Exchange booth]
+  tree: [Tree, Dead tree, Evergreen]
+  oak_tree: [Oak tree, Oak]
+  willow_tree: [Willow tree, Willow]
+  maple_tree: [Maple tree]
+  yew_tree: [Yew tree, Yew]
+  redwood_tree: [Redwood tree, Redwood]
+  rock: [Copper rocks, Tin rocks, Iron rocks, Coal rocks, Clay rocks, Rocks]
+  range: [Range, Cooking range, Clay oven]
+  furnace: [Furnace]
+  anvil: [Anvil]
+  altar: [Altar]
+  ruins: [Mysterious ruins]
+  altar_portal: [Portal]
+  stall: [Tea stall, Fruit Stall, Bakery stall, Silk stall]
+  build_spot: [Larder space, Door space, Table space]
+  ore_vein: [Ore vein, Depleted vein]
+  hopper: [Hopper]
+  mlm_sack: [Sack]
+  broken_strut: [Broken strut]
+  conveyor: [Conveyor belt]
+  bar_dispenser: [Bar dispenser]
+  bruma_tree: [Bruma roots]
+  lit_brazier: [Burning brazier]
+  dark_altar: [Dark Altar]
+  dense_runestone: [Dense runestone]
+  blood_altar: [Blood Altar]
+  soul_altar: [Soul Altar]
+  house_portal: [Portal]
+  gilded_altar: [Altar]
+  seed_table: [Seed table]
+
+# Ground Items: one highlight color for every listed item (`loot`).
+ground_items: [Bones, Big bones, Cowhide, Feather, Raw chicken, Ensouled giant head]
+
+# Item names the OSRS Wiki uses where they don't follow from the tag name.
+items:
+  guam_unf: Guam potion (unf)
+  tarromin_unf: Tarromin potion (unf)
+  ranarr_unf: Ranarr potion (unf)
+  irit_unf: Irit potion (unf)
+  kwuarm_unf: Kwuarm potion (unf)
+  snapdragon_unf: Snapdragon potion (unf)
+  cadantine_unf: Cadantine potion (unf)
+  lantadyme_unf: Lantadyme potion (unf)
+  dwarf_weed_unf: Dwarf weed potion (unf)
+  toadflax_unf: Toadflax potion (unf)
+  red_spiders_eggs: Red spiders' eggs
+  wine_of_zamorak: Wine of zamorak
+  green_leather: Green dragon leather
+  blue_leather: Blue dragon leather
+  red_leather: Red dragon leather
+  black_leather: Black dragon leather
+  glassblowing_pipe: Glassblowing pipe
+  gricollers_can: Gricoller's can
+  mlm_ore: Golden nugget
+  red_chinchompa: Red chinchompa

@@ -221,6 +221,25 @@ def describe(view: View, registry: Registry | None = None) -> str:
         parts = [f"{len(hs)} {name.replace('_', ' ')} ({_near(hs[0].distance)})"
                  for name, hs in seen.items()]
         lines.append("Highlighted nearby: " + "; ".join(parts))
+        meanings = (registry or _registry()).meanings()
+        could = [f"{name.replace('_', ' ')} = {', '.join(meanings[name][:6])}"
+                 + (", ..." if len(meanings[name]) > 6 else "")
+                 for name in seen if name in meanings and name in VAGUE]
+        if could:
+            lines.append("Those highlights don't say which; each can be: " + "; ".join(could))
     else:
         lines.append("Highlighted nearby: nothing")
     return "\n".join(lines)
+
+
+# Highlight names that stand for genuinely different things (a goblin or a hill giant, copper
+# or coal); "oak tree = Oak tree, Oak" would just be noise.
+VAGUE = {"enemy", "rock", "loot", "stall", "slayer_master", "random_event", "build_spot", "altar"}
+
+_REGISTRY: list[Registry] = []
+
+
+def _registry() -> Registry:
+    if not _REGISTRY:
+        _REGISTRY.append(Registry.load())
+    return _REGISTRY[0]

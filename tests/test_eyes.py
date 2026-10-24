@@ -116,3 +116,15 @@ def test_no_canvas_on_the_desktop_finds_nothing():
     rng = np.random.default_rng(0)
     at, _ = find_canvas(rng.integers(0, 255, (700, 1000, 3), dtype=np.uint8))
     assert at is None
+
+
+def test_shared_highlight_names_say_what_they_can_be(eyes):
+    text = describe(eyes.look(lumbridge().grab()))
+    assert "Those highlights don't say which; each can be:" in text
+    assert "rock = Copper rocks, Tin rocks, Iron rocks, Coal rocks, Clay rocks, Rocks" in text
+    assert "oak tree =" not in text and "cow =" not in text  # nothing to explain there
+
+
+def test_names_file_matches_the_registry():
+    for name in REG.meanings():
+        assert name in REG.colors, name
