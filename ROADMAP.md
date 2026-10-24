@@ -20,7 +20,7 @@ bottom.
 | 5 | **Control: game-level actions plus his own routines.** Actions like "click the nearest highlighted oak", "click inventory slot", "open bank", "press space". Routines are short action lists he writes and saves ("chop until full, then bank"), with conditions read from the screen (inventory full, highlight visible, HP below, idle). He doesn't write code. | He learns by building his own skill library, and routines run without a slow decision per click. Code written by a small model that drives a real mouse is where things go badly wrong. |
 | 5b | **He learns through notes, not training.** A notebook (facts and lessons: "lost my rune armour at the Skeleton Mine"), his routine library, a goal list, and a journal you can read. | The model's weights don't change while he plays; what's written down and fed back in is what he has learned. |
 | 6 | **Goals: he sets his own**, posts each one to Discord with his reason, and keeps going unless you veto. Milestones you've offered, in his notebook once: Vampire Slayer, Stronghold of Security, Obor, **Dragon Slayer, which earns him membership**, and long term the fire cape. | Told once and then his to pursue, so the offer doesn't push him into cutting corners. |
-| 6b | **Accounts:** he shares about 3 accounts with skillbot. Only one of the two may use an account at a time (a shared lock). | His losses are those accounts' losses; that's accepted. |
+| 6b | **Accounts:** he shares about 3 accounts with skillbot. Only one of the two plays at a time (a shared lock). He plays one account at a time and switches between them himself, like a real player: one memory, a goal per account. | His losses are those accounts' losses; that's accepted. |
 | 7 | **First milestone (v0):** on the real client, he picks a skill goal, posts it, works toward it for an hour with his own actions, saves at least one routine he made, and keeps a journal. Built and tested against a simulated game first. | The smallest thing that shows the whole loop working. |
 | 8 | **Learning track in parallel, in small doses.** A character-level GPT written from scratch, trained on the **OSRS wiki** instead of Shakespeare (CC BY-NC-SA, fetched politely through its API). Reddit is out because of its terms on training models. Later maybe BPE, a bigger model, a C version. | It never blocks superbond2. A model that writes fake wiki entries is more fun to judge than fake Shakespeare. |
 
@@ -29,6 +29,8 @@ bottom.
 - [ ] Check the server's rules on bots in PvP and on the Grand Exchange.
 - [ ] Run the bake-off at home ([bench/README.md](bench/README.md)) and send the results.
 - [ ] Note the PC's CPU and RAM (Task Manager → Performance).
+- [ ] Install Ollama on Windows and pull the bake-off models (set `OLLAMA_HOST=0.0.0.0` so the VM can reach it).
+- [ ] Save each Bolt character's session (`python -m superbond2 save-session NAME`) and write a line about each in `data/memory/accounts.yaml`.
 - [ ] Try the eyes and hands on the VM ([superbond2/README.md](superbond2/README.md)) and send the output and look.png.
 
 ## Build order

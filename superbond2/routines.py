@@ -43,7 +43,7 @@ from typing import Callable
 
 import yaml
 
-from .actions import ACTIONS, Actions, Result, changes
+from .actions import Actions, Result, changes
 from .eyes import View
 from .layout import SLOTS
 

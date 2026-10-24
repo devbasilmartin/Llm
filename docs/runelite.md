@@ -16,7 +16,9 @@ few settings of his own.
 | Status Bars | on, HP left of the inventory | His HP, and the eat reflex. |
 | Key Remapping | on | Space for dialogs without typing into chat. |
 
-Also: fixed mode, camera zoomed all the way out, **shift-click drop** on.
+Also: fixed mode, camera zoomed all the way out, **shift-click drop** on, and RuneLite's
+**Remember client position** on (he restarts RuneLite to switch launcher characters, and the
+window has to come back where `calibrate` found it).
 
 `marked` also has to go into skillbot's `colors.yaml`, so skillbot never hands that color
 to something else: add the line from the bottom of `superbond2/colors.yaml`.

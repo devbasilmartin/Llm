@@ -194,7 +194,7 @@ class Actions:
                           + (f" (it found: {', '.join(found)})" if found else ""))
         before = self.view
         px, py = self.eyes.layout.player
-        for pt, h in sorted(found[key], key=lambda s: (s[0][0] - px) ** 2 + (s[0][1] - py) ** 2):
+        for pt, _ in sorted(found[key], key=lambda s: (s[0][0] - px) ** 2 + (s[0][1] - py) ** 2):
             now = self.body.read_hover(pt)
             if now is None or now.name != key:
                 continue                        # moved, or it was chopped down

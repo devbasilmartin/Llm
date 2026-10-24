@@ -4,7 +4,7 @@ import pytest
 from superbond2.actions import ACTIONS, Actions
 from superbond2.eyes import Eyes
 from superbond2.hands import RealBody, SimBody
-from superbond2.layout import Layout, Rect
+from superbond2.layout import Layout
 from superbond2.sim import lumbridge
 from superbond2.text import MENU_FILL, Reader, split_name
 
