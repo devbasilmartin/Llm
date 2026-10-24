@@ -241,3 +241,5 @@ tanner:          {rgb: [128, 192, 64], category: other}
 door:            {rgb: [192, 0, 0], category: portal, area: everywhere}   # Object Markers: doors on travel routes (the brass key door)
 ring_mould:      {rgb: [255, 128, 128], category: item}   # gold jewellery (kept)
 amulet_mould:    {rgb: [255, 128, 192], category: item}
+# --- superbond2 ---
+marked:          {rgb: [128, 248, 208], category: other, area: everywhere}  # Object Markers' marker color: what superbond2 marks himself

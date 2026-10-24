@@ -211,7 +211,7 @@ def test_notebook_keeps_no_duplicates_and_trims(memory):
     assert memory.add_note("a  lesson\n learned") == "noted"
     assert memory.add_note("a lesson learned") == "already in your notebook"
     assert memory.add_note("   ") == "an empty note isn't kept"
-    assert len(memory.notes()) == 5                    # who he is, the offer (3 notes), the lesson
+    assert len(memory.notes()) == 6                    # who he is, the offer (3 notes), RuneLite, the lesson
 
 
 def test_parse_calls_handles_string_arguments():

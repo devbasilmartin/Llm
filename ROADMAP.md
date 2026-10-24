@@ -53,6 +53,8 @@ bottom.
 - [x] His personality: who he is, firsts celebrated, journal reminders
 - [x] Characters: log into skillbot's profiles by name (credentials typed by code, never seen by him), memory per character, rotation with --characters, logged back in after a disconnect; won't start while skillbot runs
 - [ ] The login screen positions, confirmed on the real client
+- [x] Exploring: survey (hover text over the whole view), mark (Object Markers, in `marked`), inspect (what a highlight really is); RuneLite guide in docs/runelite.md
+- [ ] Hover text and menu reading, tuned on the real client (`python -m superbond2 hover`)
 - [ ] New routines only run unattended once proven (experimental while you watch)
 - [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying
 - [ ] More eyes as needed: chat and NPC dialog, levels, minimap, open interfaces

@@ -34,6 +34,15 @@ class SimBody:
     def __init__(self, game):
         self.game = game
 
+    def read_hover(self, pt):
+        return self.game.hover(pt)
+
+    def open_menu(self, pt, shift: bool = False):
+        return self.game.open_menu(pt, shift)
+
+    def close_menu(self) -> None:
+        self.game.menu_open = None
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -65,6 +74,8 @@ class RealBody:
         self.corner = corner
         gui.FAILSAFE = True                 # pyautogui's own corner check, as a second net
         gui.PAUSE = 0.05
+        from .text import Reader
+        self.reader = Reader()
 
     def check_kill_switch(self) -> None:
         x, y = self.gui.position()
@@ -92,6 +103,35 @@ class RealBody:
                     self.gui.keyUp("shift")
         except self.gui.FailSafeException as e:
             raise Stopped("the mouse is in a screen corner") from e
+
+    def read_hover(self, pt):
+        """Move the mouse to `pt` and read what the game says is there (a Hover, or None)."""
+        self.check_kill_switch()
+        x, y = self.screen.to_screen(pt)
+        self.gui.moveTo(x, y)                    # straight there: a survey hovers ~270 points
+        time.sleep(0.08)                         # the hover text follows a frame later
+        return self.reader.hover(self.screen.grab())
+
+    def open_menu(self, pt, shift: bool = False):
+        """Right-click `pt` (with shift held for RuneLite's extra options) and read the menu:
+        [(row text, where to click it)]."""
+        self.check_kill_switch()
+        x, y = self.screen.to_screen(pt)
+        self.gui.moveTo(x, y, duration=self.move_seconds)
+        if shift:
+            self.gui.keyDown("shift")
+        try:
+            self.gui.click(button="right")
+        finally:
+            if shift:
+                self.gui.keyUp("shift")
+        time.sleep(0.3)
+        return self.reader.menu(self.screen.grab(), pt)
+
+    def close_menu(self) -> None:
+        """Moving away from a menu closes it."""
+        x, y = self.gui.position()
+        self.gui.moveTo(x, max(0, y - 60), duration=self.move_seconds)
 
     def key(self, k: str) -> None:
         if k not in KEYS:

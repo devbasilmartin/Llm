@@ -43,9 +43,21 @@ class Thing:
     hp: int = 0                  # monster
     respawn: float = 10.0
     gone_until: float = 0.0      # depleted, dead or picked up until then
+    label: str = ""              # its name in the game ("Oak tree")
+    verb: str = ""               # its left-click option ("Chop down")
+    marked: bool = True          # outlined (marked by the owner, or by him); unmarked ones aren't
 
     def here(self, t: float) -> bool:
         return t >= self.gone_until
+
+
+# what the game calls things, and their left-click option, by registry name
+LABELS = {"oak_tree": ("Oak tree", "Chop down"), "tree": ("Tree", "Chop down"),
+          "willow_tree": ("Willow tree", "Chop down"), "rock": ("Copper rocks", "Mine"),
+          "cow": ("Cow", "Attack"), "enemy": ("Goblin", "Attack"), "bank": ("Bank booth", "Bank"),
+          "other_player": ("Zezima", "Follow"), "loot": ("Cowhide", "Take")}
+HOVER_KIND = {"gather": "object", "bank": "object", "static": "object", "monster": "npc",
+              "loot": "item", "player": "player"}
 
 
 class SimGame:
@@ -70,11 +82,14 @@ class SimGame:
         self.player_name: str | None = None
         self._fields, self._field = ["", ""], None
         self._tab = "inventory"
+        self.menu_open: tuple[Thing | None, list] | None = None
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
     # --- setting up a scene ---------------------------------------------------------------
     def add(self, name: str, kind: str, x: int, y: int, w: int = 30, h: int = 40, **kw) -> Thing:
         thing = Thing(name, kind, Rect(self.layout.viewport.x + x, self.layout.viewport.y + y, w, h), **kw)
+        label, verb = LABELS.get(name, (name.replace("_", " ").capitalize(), "Examine"))
+        thing.label, thing.verb = thing.label or label, thing.verb or verb
         self.things.append(thing)
         return thing
 
@@ -88,6 +103,8 @@ class SimGame:
     def click(self, pt, shift: bool = False) -> None:
         if self.screen != "game":
             return self._click_login(pt)
+        if self.menu_open is not None:
+            return self._choose(pt)
         for name, at in self.layout.tabs.items():
             if abs(pt[0] - at[0]) <= 12 and abs(pt[1] - at[1]) <= 12:
                 self._tab = name
@@ -129,6 +146,48 @@ class SimGame:
             self.t = self._last_tick
             self._tick()
         self.t = end
+
+    # --- hovering and right-click menus -------------------------------------------------
+    def _under(self, pt) -> Thing | None:
+        if not self.layout.viewport.contains(pt):
+            return None
+        for thing in self.things:
+            if thing.here(self.t) and thing.box.grow(2).contains(pt):
+                return thing
+        return None
+
+    def hover(self, pt):
+        from .text import Hover
+        thing = self._under(pt) if self.screen == "game" else None
+        if thing is None:
+            return None
+        return Hover(f"{thing.verb} {thing.label}", thing.label, HOVER_KIND.get(thing.kind, "object"))
+
+    def open_menu(self, pt, shift: bool = False) -> list:
+        thing = self._under(pt)
+        options = ["Walk here", "Cancel"]
+        if thing is not None:
+            options = [f"{thing.verb} {thing.label}", "Walk here", f"Examine {thing.label}", "Cancel"]
+            if shift and HOVER_KIND.get(thing.kind) == "object":
+                options.insert(1, "Unmark object" if thing.marked else "Mark object")
+        lay = self.layout
+        rows = [(o, (int(pt[0]), int(pt[1]) + lay.menu_header + lay.menu_row * i + lay.menu_row // 2))
+                for i, o in enumerate(options)]
+        self.menu_open = (thing, rows)
+        return rows
+
+    def _choose(self, pt) -> None:
+        thing, rows = self.menu_open
+        self.menu_open = None
+        option = next((o for o, at in rows if abs(at[1] - pt[1]) <= 7 and abs(at[0] - pt[0]) <= 100), None)
+        if option is None or thing is None:
+            return
+        if option == "Mark object":
+            thing.marked, thing.name = True, "marked"
+        elif option == "Unmark object":
+            thing.marked = False
+        elif option.startswith(thing.verb):
+            self._click_thing(thing)
 
     def type_text(self, text: str) -> None:
         if self.screen == "login" and self._field is not None:
@@ -240,7 +299,8 @@ class SimGame:
     def _draw_thing(self, img, thing: Thing) -> None:
         b = thing.box
         img[b.y + 2:b.y + b.h - 2, b.x + 2:b.x + b.w - 2] = SPRITE
-        _outline(img, b, self.registry[thing.name].rgb, 2)
+        if thing.marked:
+            _outline(img, b, self.registry[thing.name].rgb, 2)
 
     def _draw_player(self, img) -> None:
         px, py = self.layout.player
@@ -273,7 +333,8 @@ def _outline(img, r: Rect, rgb, width: int) -> None:
 
 
 def lumbridge(seed: int = 1) -> SimGame:
-    """A starter scene: two oaks, a tree, a copper rock, a cow, the bank, another player."""
+    """A starter scene: two oaks, a tree, a copper rock, a cow, the bank, another player, all
+    marked; and, not marked, a willow, a door and a man."""
     g = SimGame(seed=seed)
     g.add("oak_tree", "gather", 60, 40, gives="oak_logs", deplete=0.15, respawn=12)
     g.add("oak_tree", "gather", 140, 30, gives="oak_logs", deplete=0.15, respawn=12)
@@ -282,6 +343,10 @@ def lumbridge(seed: int = 1) -> SimGame:
     g.add("cow", "monster", 90, 220, 44, 30, gives="cowhide", hp=8, respawn=15)
     g.add("bank", "bank", 300, 260, 40, 40)
     g.add("other_player", "player", 200, 110, 14, 30)
+    g.add("willow_tree", "gather", 230, 40, gives="willow_logs", deplete=0.1, respawn=12, marked=False)
+    g.add("door", "static", 470, 140, 20, 34, label="Door", verb="Open", marked=False)
+    g.add("enemy", "monster", 20, 140, 14, 30, label="Man", verb="Attack", gives="bones", hp=6,
+          respawn=10, marked=False)
     g.give("bronze_axe", tool=True)
     g.give("trout", 3)
     return g

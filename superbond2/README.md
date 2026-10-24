@@ -217,6 +217,24 @@ python -m superbond2 play --model gemma4:12b            # on the real client
 to listen on `0.0.0.0`, see [bench/README.md](../bench/README.md)). `--turns` (50) and
 `--minutes` (60) limit a session.
 
+### Exploring: survey, inspect, mark
+
+He only sees what's highlighted, so three actions let him find and highlight things himself:
+
+- **`survey`** hovers about 270 points across the 3D view and reads the hover text at each
+  ("Chop down Oak tree"): *Willow tree (object, ahead); Door (object, far right); Man (npc,
+  far left); Bank booth (object, behind, highlighted as bank)...* The text color tells an
+  object (cyan) from an NPC (yellow) from an item (orange). About 25-30 s on the real client.
+- **`mark <name>`** shift + right-clicks something from his last survey and picks *Mark
+  object*: Object Markers outlines it for good, in `marked` (`#80F8D0`). Objects only.
+- **`inspect <highlight>`** reads what a highlight really is: *that rock is Copper rocks*,
+  *that marked is Willow tree*.
+
+Reading text needs Tesseract in the VM; see [docs/runelite.md](../docs/runelite.md), which
+also lists the RuneLite settings and plugins that help him (and the ones to be careful with).
+The hover text position and the menu rows aren't measured on the real client yet:
+`python -m superbond2 hover` reads what's under the mouse and saves the picture.
+
 ### Characters
 
 He can log into the characters skillbot already knows: each is a file

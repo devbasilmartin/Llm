@@ -130,6 +130,95 @@ class Actions:
         self.body.key(key)
         return self._after(before, f"pressed {key}", settle=0.6)
 
+    # --- exploring: finding things that aren't highlighted, and marking them ---------------
+    def _direction(self, pt) -> str:
+        px, py = self.eyes.layout.player
+        dx, dy = pt[0] - px, pt[1] - py
+        side = "left" if dx < -60 else "right" if dx > 60 else ""
+        depth = "ahead" if dy < -40 else "behind" if dy > 40 else ""
+        where = " ".join(w for w in (depth, side) if w) or "right here"
+        far = "far " if (dx * dx + dy * dy) ** 0.5 > 180 else ""
+        return far + where
+
+    def survey(self) -> Result:
+        """Hover over the whole 3D view and read what's there, highlighted or not. This is how
+        you find things you can't see yet: then mark them."""
+        view = self.look()
+        vp = self.eyes.layout.viewport
+        found: dict[str, list] = {}
+        cols, rows = 21, 13                     # about 24 px apart, every other row shifted
+        step_x, step_y = (vp.w - 24) / (cols - 1), (vp.h - 24) / (rows - 1)   # by half a step,
+        for gy in range(rows):                                                # so even narrow
+            shift = step_x / 2 if gy % 2 else 0                               # things get hit
+            for gx in range(cols - (1 if gy % 2 else 0)):
+                pt = (int(vp.x + 12 + shift + gx * step_x), int(vp.y + 12 + gy * step_y))
+                h = self.body.read_hover(pt)
+                if h is not None:
+                    spots = found.setdefault(h.name, [])
+                    if not any(abs(pt[0] - q[0]) < 60 and abs(pt[1] - q[1]) < 45 for q, _ in spots):
+                        spots.append((pt, h))
+        if hasattr(self.body, "close_menu"):
+            self.body.close_menu()
+        self.surveyed = found
+        if not found:
+            return Result(True, "surveyed: nothing here but ground")
+        parts = []
+        for name, spots in sorted(found.items(), key=lambda kv: kv[1][0][1].kind):
+            lit = [h.name for h in view.highlights if any(h.box.grow(4).contains(p) for p, _ in spots)]
+            seen = f", highlighted as {lit[0]}" if lit else ""
+            where = ", ".join(self._direction(p) for p, _ in spots[:3])
+            parts.append(f"{name} ({spots[0][1].kind}, {where}{seen})")
+        return Result(True, "surveyed: " + "; ".join(parts) +
+                      ". mark <name> outlines an object for good.")
+
+    def inspect(self, name: str) -> Result:
+        """Hover over the nearest highlight called `name` and read what it really is (a
+        `rock` might be Copper rocks; a `marked` one, whatever you marked)."""
+        name = as_name(name)
+        target = self.look().nearest(name)
+        if target is None:
+            return Result(False, f"no {name} in sight")
+        h = self.body.read_hover(target.center)
+        if h is None:
+            return Result(False, f"couldn't read what that {name} is")
+        return Result(True, f"that {name} is {h.name} ({h.text})")
+
+    def mark(self, name: str) -> Result:
+        """Outline an object you found with survey, for good: Object Markers (shift +
+        right-click, Mark object). It shows as `marked` from then on."""
+        found = getattr(self, "surveyed", {})
+        key = next((k for k in found if k.lower() == str(name).strip().lower()), None) or \
+            next((k for k in found if str(name).strip().lower() in k.lower()), None)
+        if key is None:
+            return Result(False, f"no {name} in your last survey; survey first"
+                          + (f" (it found: {', '.join(found)})" if found else ""))
+        before = self.view
+        px, py = self.eyes.layout.player
+        for pt, h in sorted(found[key], key=lambda s: (s[0][0] - px) ** 2 + (s[0][1] - py) ** 2):
+            now = self.body.read_hover(pt)
+            if now is None or now.name != key:
+                continue                        # moved, or it was chopped down
+            if now.kind != "object":
+                return Result(False, f"{key} is an {now.kind}; only objects can be marked")
+            rows = self.body.open_menu(pt, shift=True)
+            texts = [t.lower() for t, _ in rows]
+            if any(t.startswith("unmark") for t in texts):
+                self.body.close_menu()
+                return Result(False, f"that {key} is already marked")
+            row = next((at for t, at in rows if t.lower().startswith("mark")), None)
+            if row is None:
+                self.body.close_menu()
+                return Result(False, "the menu has no Mark object (is RuneLite's Object Markers "
+                              "plugin on?)")
+            self.body.click(row)
+            result = self._after(before, f"marked the {key}", settle=0.6)
+            lit = any(hl.name == "marked" and hl.box.grow(6).contains(pt) for hl in self.view.highlights)
+            result.said += "; it shows as `marked` now" if lit else \
+                "; but no `marked` outline showed up (is Object Markers' color #80F8D0?)"
+            result.ok = lit
+            return result
+        return Result(False, f"no {key} where your survey saw it anymore; survey again")
+
     def wait(self, seconds: float) -> Result:
         """Do nothing for a while (at most 60 seconds) and see what changed."""
         seconds = max(0.6, min(float(seconds), 60))
@@ -170,6 +259,9 @@ ACTIONS = [
     _spec("drop_all", Actions.drop_all.__doc__, item="An item name from the inventory."),
     _spec("press", Actions.press.__doc__, key="space, esc, enter, 1, 2, 3, 4 or 5."),
     _spec("wait", Actions.wait.__doc__, seconds="How long, 1-60."),
+    _spec("survey", Actions.survey.__doc__),
+    _spec("inspect", Actions.inspect.__doc__, name="A highlight name, e.g. rock, enemy, marked."),
+    _spec("mark", Actions.mark.__doc__, name="A name from your last survey, e.g. Willow tree."),
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
 ]
 

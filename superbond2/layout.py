@@ -50,6 +50,12 @@ class Layout:
         "combat": (538, 186), "skills": (571, 186), "quest": (604, 186), "inventory": (637, 186),
         "magic": (736, 186), "logout": (637, 484)})
 
+    # the hover text at the top left of the 3D view ("Chop down Oak tree / 2 more options")
+    # and right-click menus (a header, then one row per option): not measured yet
+    hover_text: Rect = Rect(4, 4, 420, 18)
+    menu_header: int = 19
+    menu_row: int = 15
+
     # logging in and out (skillbot's values, not yet confirmed on the real client)
     logout_button: tuple[int, int] = (641, 432)         # "Click here to logout" in the logout tab
     login_existing_user: tuple[int, int] = (462, 291)   # "Existing User" on the login screen

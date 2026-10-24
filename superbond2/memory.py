@@ -30,6 +30,10 @@ OFFER = [
     "upgrades me to members.",
     "I start with nothing known about the game. I can only work with what I see on screen: "
     "the highlights nearby and my inventory.",
+    "The highlights come from RuneLite plugins: Object Markers outlines objects (the owner's "
+    "marks in named colors, mine in `marked`), NPC Indicators outlines NPCs, Ground Items "
+    "outlines loot, Player Indicators other players, Inventory Tags my items, Status Bars my HP. "
+    "Quest Helper, when it's on, outlines the next step of a quest as `quest_target`.",
 ]
 DEFAULT_REFLEXES = {"eat_below": 40, "food": ["trout", "shrimps", "lobster", "cooked_meat",
                                               "anchovies", "shark", "swordfish"]}

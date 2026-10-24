@@ -6,6 +6,7 @@
     python -m superbond2 do click_nearest name=oak_tree    # one action, on the real client
     python -m superbond2 run my-routine.yaml               # a routine (add --sim to try it first)
     python -m superbond2 play --model gemma4:12b           # let him play (add --sim to try it first)
+    python -m superbond2 hover                             # read the hover text under the mouse
     python -m superbond2 characters                        # the characters he can log into
     python -m superbond2 play --model gemma4:12b --characters main,alt --minutes-each 60
 
@@ -163,6 +164,24 @@ def play(args) -> int:
     return 0
 
 
+def hover(_args) -> int:
+    from .screen import Screen
+    from .text import Reader
+    reader = Reader()
+    img = Screen.load(ORIGIN).grab()
+    pic, kind = reader.prepare(reader.layout.hover_text.crop(img))
+    cv2.imwrite("hover.png", pic)
+    cv2.imwrite("hover-raw.png", cv2.cvtColor(reader.layout.hover_text.crop(img), cv2.COLOR_RGB2BGR))
+    try:
+        h = reader.hover(img)
+    except RuntimeError as e:
+        print(e)
+        return 1
+    print(f"Read: {h.text!r} -> name {h.name!r}, a {h.kind}" if h else "Read: nothing (Walk here)")
+    print("Saved hover-raw.png (what was there) and hover.png (what was read).")
+    return 0
+
+
 def characters(_args) -> int:
     from .characters import PROFILES, Characters
     names = Characters().names()
@@ -210,7 +229,7 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="superbond2", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
-    for name, fn in (("calibrate", calibrate), ("look", look), ("sim", sim)):
+    for name, fn in (("calibrate", calibrate), ("look", look), ("sim", sim), ("hover", hover)):
         sub.add_parser(name).set_defaults(fn=fn)
     d = sub.add_parser("do", help="one action on the real client, e.g. do click_nearest name=bank")
     d.add_argument("action")
