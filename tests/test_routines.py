@@ -190,7 +190,8 @@ from superbond2.routines import simple_routine, step_from_line  # noqa: E402
 
 
 @pytest.mark.parametrize("line, step", [
-    ("click_nearest oak_tree", {"click_nearest": "oak_tree"}),
+    ("click_nearest oak_tree", {"if": "see oak_tree", "then": [{"click_nearest": "oak_tree"}]}),
+    ("click_nearest cow if idle", {"if": "idle", "then": [{"click_nearest": "cow"}]}),
     ("  wait   2 ", {"wait": 2}),
     ("wait 2.5", {"wait": 2}),
     ("click_item trout if hp below 50%", {"if": "hp below 50%", "then": [{"click_item": "trout"}]}),

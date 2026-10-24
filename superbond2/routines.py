@@ -158,7 +158,7 @@ def parse_step(raw, depth: int, where: str) -> Step:
 def step_from_line(line: str, where: str = "step") -> dict:
     """One line of the simple form -> a step as YAML would have it:
 
-        "click_nearest oak_tree"                 -> {click_nearest: oak_tree}
+        "click_nearest oak_tree"                 -> {if: see oak_tree, then: [{click_nearest: oak_tree}]}
         "wait 2"                                 -> {wait: 2}
         "click_item trout if hp below 50%"       -> {if: hp below 50%, then: [{click_item: trout}]}
         "stop out of food if not have trout"     -> {if: not have trout, then: [{stop: out of food}]}
@@ -184,6 +184,8 @@ def step_from_line(line: str, where: str = "step") -> dict:
     elif not arg:
         raise RoutineError(f"{where}: {name} needs something after it, like 'click_nearest oak_tree'")
     step = {name: arg}
+    if name == "click_nearest" and not cond:
+        cond = f"see {arg}"     # clicking what isn't there would fail the whole routine
     return {"if": cond, "then": [step]} if cond else step
 
 
