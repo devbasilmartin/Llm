@@ -168,6 +168,7 @@ BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_r
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
 THINK_COOLDOWN = 3          # turns after a thoughtful one before the fast brain may ask again
+FAST_LINE = 220             # characters of each recent turn the fast brain reads (less to read)
 FAST_RECENT = 5             # turns shown to the fast brain
 RECENT = 8                  # turns shown in the prompt
 NOTES_SHOWN = 40            # newest notes shown in the prompt
@@ -400,7 +401,8 @@ class Brain:
         lines = [f"Your goal: {goal['goal']}" if goal else "Your goal: none yet.", "",
                  "Your routines:", self.memory.routines.summary() if self.memory.routines.names()
                  else "(none yet)", "", "Recent turns, oldest first:"]
-        lines += self.recent[-FAST_RECENT:] or ["(this is your first turn)"]
+        lines += [r if len(r) <= FAST_LINE else r[:FAST_LINE - 3] + "..."
+                  for r in self.recent[-FAST_RECENT:]] or ["(this is your first turn)"]
         lines += ["", "Now:", describe(view)]
         return "\n".join(lines)
 

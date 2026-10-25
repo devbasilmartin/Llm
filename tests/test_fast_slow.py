@@ -218,3 +218,12 @@ def test_no_asking_to_think_again_right_after_thinking(game, memory):
     t = b.turn()
     assert not t.ok and t.result == "you thought it over 1 turns ago; carry on with the plan"
     assert b.need_thought == ""
+
+
+def test_the_fast_brain_reads_short_recent_turns(game, memory):
+    fast = Scripted(WAIT)
+    b = two(game, memory, fast, Scripted())
+    b.recent = ["9. run_routine(...) -> " + "x" * 800]
+    b.turn()
+    line = next(line for line in fast.prompts[0].splitlines() if line.startswith("9. "))
+    assert len(line) == 220 and line.endswith("...")
