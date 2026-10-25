@@ -187,3 +187,23 @@ def test_he_can_change_when_he_runs(game, memory):
     assert memory.reflexes()["flee_below"] == 10
     memory.set_reflexes(40, ["trout"])               # eat settings alone keep the flee one
     assert memory.reflexes()["flee_below"] == 10
+
+
+def test_doing_it_by_hand_three_times_hands_over_to_write_the_routine(game, memory):
+    chop = ("click_nearest", {"name": "oak_tree"})
+    fast = Scripted(chop, WAIT, chop, WAIT, chop, WAIT, WAIT)
+    slow = Scripted(("save_routine", CHOP))
+    b = two(game, memory, fast, slow)
+    b.journaled = 10 ** 6
+    for _ in range(7):
+        b.turn()
+    assert slow.kinds == ["slow"] and "save it as a routine" in slow.prompts[0]
+    assert "chop oaks" in memory.routines.names()
+
+
+def test_a_routine_that_doesnt_exist_yet_is_for_the_thoughtful_brain(game, memory):
+    fast, slow = Scripted(("run_routine", {"name": "oak loop"})), Scripted(WAIT)
+    b = two(game, memory, fast, slow)
+    b.turn()
+    b.turn()
+    assert slow.prompts[0].endswith("there's no routine called 'oak loop' yet.")

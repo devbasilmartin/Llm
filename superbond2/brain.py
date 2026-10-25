@@ -530,10 +530,14 @@ class Brain:
             if cycle and self.turns - self.nudged >= NUDGE_COOLDOWN:
                 result.said += suggest(cycle)
                 self.nudged, self.by_hand = self.turns, []
+                if self.fast is not None:           # writing routines is the thoughtful brain's job
+                    self.need_thought = "you've done the same thing by hand 3 times: save it as a routine"
         elif name in ("run_routine", "save_routine"):
             self.by_hand = []                       # he's already using routines
         key = name + json.dumps(args, sort_keys=True)
         self.same = (key, self.same[1] + 1 if key == self.same[0] else 1)
+        if name == "run_routine" and not result.ok and "no routine called" in result.said:
+            self.need_thought = f"there's no routine called {args.get('name')!r} yet"
         if name == "run_routine" and not result.ok:
             why = result.said.split(" after ")[0]
             if why == self.last_failure:
