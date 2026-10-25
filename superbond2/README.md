@@ -172,15 +172,34 @@ bank opens the bank screen, which the eyes can't read yet.
 
 `brain.py` is the loop. Each turn:
 
-1. **Reflexes:** below his eat threshold, with food in the inventory, code eats at once. He
-   sets the threshold and what counts as food (`set_reflexes`); routines check it after every
-   action too.
+1. **Reflexes:** below his eat threshold, with food in the inventory, code eats at once.
+   With no food and HP below his flee threshold (25% to start), code runs him away from the
+   fight; if HP keeps dropping after that, it logs him out for two minutes (code logs him back
+   in). He sets the thresholds and what counts as food (`set_reflexes`); routines check them
+   after every action too.
 2. **The prompt:** his goal, notebook, routines (with how they've gone), reflexes, his last 8
    turns, and what the eyes see now.
 3. **One tool call:** a game action, `run_routine`, `save_routine` (the simple form),
    `search_wiki`, `read_wiki`, `note`, `set_goal`, `journal`, `ask_owner` or `set_reflexes`.
    Every mistake comes back as a message he can read.
 4. **Remembered:** in his recent turns and the decision log.
+
+**Two brains (`--fast-model`).** On a CPU, a big model that thinks first can take minutes a
+turn. So a small model with thinking off (`--fast-model granite4.1:3b`) takes the everyday
+turns, from a short prompt (goal, routines, last 5 turns, the screen), with only the game
+actions, `run_routine` and `think_it_over`. The big model (`--model`) takes the turns that
+need thought:
+- when he has no goal
+- when the fast one asks (`think_it_over`) or reaches for a tool it doesn't have
+- when a routine fails the same way twice, or the same action keeps doing nothing
+- when you say something on Discord
+- for his journal
+- every 15 turns, to step back
+
+When a routine starts, the big model thinks in the background while it plays (the CPU is
+mostly free then): plans, notes, routine fixes, journal entries, wiki reading. It can't use
+game actions, since the screen will have moved on. Without `--fast-model`, the big model
+takes every turn, as before.
 
 A few rules keep a confused model from making a mess: a goal can't change within 10 turns
 unless he says it's done or can't be done (every change messages you); he can't ask you a
@@ -211,6 +230,7 @@ His memory is plain files (`data/memory/`, or `data/sim-memory/` with `--sim`):
 ```sh
 python -m superbond2 play --sim --model gemma4:12b      # on the simulated game
 python -m superbond2 play --model gemma4:12b            # on the real client
+python -m superbond2 play --model gemma4:12b --fast-model granite4.1:3b   # two brains
 ```
 
 `--host` defaults to `http://10.0.2.2:11434`, the Windows host as seen from the VM (Ollama has

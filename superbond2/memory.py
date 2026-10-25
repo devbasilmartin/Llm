@@ -38,7 +38,7 @@ OFFER = [
     "outlines loot, Player Indicators other players, Inventory Tags my items, Status Bars my HP. "
     "Quest Helper, when it's on, outlines the next step of a quest as `quest_target`.",
 ]
-DEFAULT_REFLEXES = {"eat_below": 40, "food": ["trout", "shrimps", "lobster", "cooked_meat",
+DEFAULT_REFLEXES = {"eat_below": 40, "flee_below": 25, "food": ["trout", "shrimps", "lobster", "cooked_meat",
                                               "anchovies", "shark", "swordfish"]}
 MAX_NOTE = 300              # characters in one note
 MAX_NOTES = 200
@@ -147,8 +147,13 @@ class Memory:
             return dict(DEFAULT_REFLEXES)
         return {**DEFAULT_REFLEXES, **(yaml.safe_load(self.reflex_file.read_text()) or {})}
 
-    def set_reflexes(self, eat_below: int, food: list[str]) -> None:
-        self.reflex_file.write_text(yaml.safe_dump({"eat_below": int(eat_below), "food": food}))
+    def set_reflexes(self, eat_below: int, food: list[str], flee_below: int | None = None) -> None:
+        r = {"eat_below": int(eat_below), "food": food}
+        if flee_below is not None:
+            r["flee_below"] = int(flee_below)
+        elif self.reflex_file.exists():
+            r["flee_below"] = self.reflexes()["flee_below"]
+        self.reflex_file.write_text(yaml.safe_dump(r))
 
     # --- decision log ---------------------------------------------------------------------
     def log(self, record: dict) -> None:

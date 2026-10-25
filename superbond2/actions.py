@@ -219,6 +219,28 @@ class Actions:
             return result
         return Result(False, f"no {key} where your survey saw it anymore; survey again")
 
+    def walk_away(self) -> Result:
+        """Run from the nearest monster: click open ground on the far side of the view.
+        For the flee reflex; not one of his tools."""
+        before, now = self.view, self.look()
+        vp, (px, py) = self.eyes.layout.viewport, self.eyes.layout.player
+        threats = [h for h in now.highlights if h.category in ("enemy", "danger") or h.name == "cow"]
+        if threats:
+            t = min(threats, key=lambda h: h.distance).center
+            dx, dy = px - t[0], py - t[1]
+        else:
+            dx, dy = 0, 1                                # nothing to see: back the way he came
+        size = max(1.0, (dx * dx + dy * dy) ** 0.5)
+        for reach in (0.8, 0.6, 0.4):                    # as far as the view allows, off any highlight
+            for turn in (0, 0.5, -0.5):
+                ux, uy = dx / size - turn * dy / size, dy / size + turn * dx / size
+                pt = (int(px + ux * vp.w / 2 * reach), int(py + uy * vp.h / 2 * reach))
+                if vp.grow(-8).contains(pt) and not any(h.box.grow(6).contains(pt)
+                                                         for h in now.highlights):
+                    self.body.click(pt)
+                    return self._after(before, f"ran {self._direction(pt)}")
+        return Result(False, "nowhere clear to run to")
+
     def wait(self, seconds: float) -> Result:
         """Do nothing for a while (at most 60 seconds) and see what changed."""
         seconds = max(0.6, min(float(seconds), 60))

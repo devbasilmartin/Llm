@@ -3,7 +3,8 @@ import json
 import pytest
 
 from superbond2.actions import Actions
-from superbond2.brain import SYSTEM, TOOL_NAMES, TOOLS, Brain, Owner
+from superbond2.brain import (BACKGROUND_TOOLS, FAST_SYSTEM, FAST_TOOLS, SYSTEM, TOOL_NAMES, TOOLS,
+                              Brain, Owner)
 from superbond2.eyes import Eyes
 from superbond2.hands import SimBody, Stopped
 from superbond2.memory import Memory
@@ -31,10 +32,12 @@ class Scripted:
     function of the prompt). Keeps every prompt it was shown."""
 
     def __init__(self, *script):
-        self.script, self.prompts = list(script), []
+        self.script, self.prompts, self.kinds = list(script), [], []
 
     def chat(self, messages, tools):
-        assert messages[0]["content"] == SYSTEM and tools == TOOLS
+        kind = {id(TOOLS): "slow", id(FAST_TOOLS): "fast", id(BACKGROUND_TOOLS): "background"}[id(tools)]
+        assert messages[0]["content"] == (FAST_SYSTEM if kind == "fast" else SYSTEM)
+        self.kinds.append(kind)
         self.prompts.append(messages[1]["content"])
         step = self.script.pop(0)
         if callable(step):
@@ -153,7 +156,8 @@ def test_he_sets_his_own_reflexes(game, memory):
     b.turn()                                    # the default reflex eats once first
     b.turn()
     assert game.hp == 17                        # ...but not again: he turned it off
-    assert "Reflexes: off" in b.model.prompts[1]
+    assert "Reflexes: you don't eat automatically; with no food you run from a fight below 25%" \
+        in b.model.prompts[1]
 
 
 def test_no_food_left_is_reported_and_stops_a_routine(game, memory):

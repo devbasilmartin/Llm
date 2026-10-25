@@ -7,7 +7,7 @@ the project can be looked after from a phone.
     !bakeoff [models]   run the bake-off; the results come back as a file
     !update             get the newest code (and restart the helper if it changed)
     !tests              run the tests
-    !play MODEL [CHARACTER] [MINUTES]    let superbond2 play
+    !play MODEL [CHARACTER] [MINUTES]    let superbond2 play (MODEL+FAST: a fast one too)
     !log [N]            the last lines of his play log
     !kill               stop whatever the helper started, right away
     !help               this list
@@ -263,8 +263,10 @@ class Helper:
     def do_play(self, model: str, character: str = "", minutes: str = "60") -> None:
         if self._playing_pid():
             return self.say("He's already playing. Say `stop` to him, or `!kill`.")
-        if not MODEL.match(model):
-            return self.say(f"`{model}` doesn't look like a model name.")
+        model, _, fast = model.partition("+")
+        for m in (model, fast) if fast else (model,):
+            if not MODEL.match(m):
+                return self.say(f"`{m}` doesn't look like a model name.")
         if character.isdigit() and minutes == "60":
             character, minutes = "", character      # !play gemma4:12b 90
         if character and not CHARACTER.match(character):
@@ -273,6 +275,8 @@ class Helper:
             return self.say("Minutes should be a number from 1 to 1440.")
         cmd = [sys.executable, "-m", "superbond2", "play", "--model", model, "--host", self.host,
                "--minutes", minutes, "--turns", "100000"]
+        if fast:
+            cmd += ["--fast-model", fast]
         if character:
             cmd += ["--character", character]
         log = self.repo / "data" / "play.log"
@@ -280,7 +284,7 @@ class Helper:
         with log.open("a") as f:
             f.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M')} play {model} {character} {minutes}\n")
         self.playing = self.popen(cmd, cwd=self.repo, stdout=log.open("a"), stderr=subprocess.STDOUT)
-        self.say(f"🎮 Starting him on {model}{' as ' + character if character else ''} for "
+        self.say(f"🎮 Starting him on {model}{' + ' + fast if fast else ''}{' as ' + character if character else ''} for "
                  f"{minutes} minutes. He'll post here himself.")
 
     def do_log(self, n: str = "15") -> None:

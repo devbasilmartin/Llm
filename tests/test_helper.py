@@ -253,3 +253,15 @@ def test_he_ignores_messages_for_the_helper(tmp_path):
     owner.said += ["!status", "!kill"]
     b.listen()
     assert b.recent == [] and not b.stopped
+
+
+def test_play_with_a_fast_model_too(repo):
+    popen = Popen(FakeProc())
+    h, d = helper(repo, popen)
+    h.handle("!play gemma4:12b+granite4.1:3b main 30")
+    cmd = popen.cmds[0]
+    assert cmd[cmd.index("--model") + 1] == "gemma4:12b" and cmd[cmd.index("--fast-model") + 1] == "granite4.1:3b"
+    assert d.posted[-1].startswith("🎮 Starting him on gemma4:12b + granite4.1:3b as main for 30 minutes")
+    h.playing.running = False
+    h.handle("!play gemma4:12b+bad;name")
+    assert d.posted[-1] == "`bad;name` doesn't look like a model name."

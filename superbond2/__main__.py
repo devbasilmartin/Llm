@@ -141,6 +141,7 @@ def play(args) -> int:
     folder = Path(args.memory) if args.memory else folder
     think = {"on": True, "off": False}.get(args.think, args.think) if args.think else None
     model = Ollama(args.model, args.host, think=think)
+    fast = Ollama(args.fast_model, args.host, think=False) if args.fast_model else None
     wiki = None if args.no_wiki else Wiki(DATA / "wiki-cache")
     eyes = Eyes()
     session = Session(body, eyes, Characters()) if start else None
@@ -163,10 +164,11 @@ def play(args) -> int:
             print(f"Logging in {start}...")
             session.log_in(start)
         brain = Brain(model, Actions(body, eyes), Memory(folder), owner, wiki=wiki,
-                      session=session, character=start, accounts=accounts)
+                      session=session, character=start, accounts=accounts, fast=fast)
         owner.tell(f"👋 Playing{' ' + start if start else ''} now.")
         others = [a for a in accounts if a != start]
-        print(f"superbond2 is playing{' ' + start if start else ''} with {args.model}; memory in "
+        print(f"superbond2 is playing{' ' + start if start else ''} with {args.model}"
+              f"{' (and ' + args.fast_model + ' for quick turns)' if fast else ''}; memory in "
               f"{folder}." + (f" He can switch to: {', '.join(others)}." if others else "") +
               " Mouse into a corner stops him.")
         print(brain.play(turns=args.turns, minutes=args.minutes))
@@ -323,6 +325,8 @@ def main(argv=None) -> int:
     r.set_defaults(fn=run_routine)
     pl = sub.add_parser("play", help="let superbond2 play")
     pl.add_argument("--model", required=True, help="an Ollama model, e.g. gemma4:12b")
+    pl.add_argument("--fast-model", help="a small model for everyday turns, e.g. granite4.1:3b; "
+                                         "--model then thinks things over")
     pl.add_argument("--host", default="http://10.0.2.2:11434",
                     help="where Ollama is (default: the Windows host, seen from the VM)")
     pl.add_argument("--sim", action="store_true", help="on the simulated game, not the client")
