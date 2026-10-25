@@ -36,7 +36,8 @@ will, but nothing touches the game: this only talks to Ollama.
    ```
    python bakeoff.py
    ```
-   Expect somewhere between 15 minutes and an hour. Every answer prints as it comes in.
+   On a CPU, expect several hours: thinking models took 1.5-6 minutes per answer on the
+   owner's PC (gemma4:12b, about an hour for its 21). Every answer prints as it comes in.
    Ctrl+C stops it and still saves what's done.
 7. Send me `results\bakeoff-<date>.md`. The `.json` next to it has every answer in full, if
    we want to dig in.
