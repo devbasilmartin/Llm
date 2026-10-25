@@ -21,6 +21,9 @@ You reply there from your phone:
 | `help` | lists these |
 | anything else | reaches him next turn as advice from you, or as the answer if he asked something |
 
+Messages starting with `!` go to the helper instead, which runs jobs on the VM like
+`!status` and `!bakeoff` ([remote.md](remote.md)).
+
 He only listens to your own Discord account. Other people in the channel are ignored, even
 if they claim to be you.
 

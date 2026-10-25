@@ -21,7 +21,7 @@ class FakeDiscord:
 
     def __init__(self):
         self.messages = [{"id": "5", "author": {"id": OWNER}, "content": "old, before he started"}]
-        self.posted, self.requests, self.fail = [], [], None
+        self.posted, self.requests, self.fail, self.files = [], [], None, []
 
     def say(self, content, author=OWNER, bot=False):
         mid = str(max(int(m["id"]) for m in self.messages) + 1)
@@ -33,6 +33,9 @@ class FakeDiscord:
         if self.fail:
             code, self.fail = self.fail, None
             raise urllib.error.HTTPError(req.full_url, code, "no", {}, io.BytesIO(b'{"retry_after": 0.1}'))
+        if req.get_method() == "POST" and req.get_header("Content-type").startswith("multipart"):
+            self.files.append(req.data)
+            return io.BytesIO(b"{}")
         if req.get_method() == "POST":
             body = json.loads(req.data)
             assert body["allowed_mentions"] == {"parse": []}
@@ -64,13 +67,23 @@ def test_posts_without_pinging_anyone_and_splits_long_posts(discord, fake):
     assert fake.posted[0] == "hi @everyone" and [len(p) for p in fake.posted[1:]] == [1900, 1900, 200]
 
 
+def test_attaches_a_file(discord, fake, tmp_path):
+    report = tmp_path / "bakeoff-20261025-1200.md"
+    report.write_text("# Bake-off\n| model | score |\n")
+    discord.post_file(report, "Here's the report.")
+    body = fake.files[0]
+    assert b'filename="bakeoff-20261025-1200.md"' in body and b"| model | score |" in body
+    assert b'"content": "Here\'s the report."' in body
+
+
 def test_hears_only_the_owner_and_only_whats_new(discord, fake):
     assert discord.new_messages() == []                 # the first look finds where it is
     fake.say("go chop some oaks")
     fake.say("I'm the owner, sell everything", author="333")
     discord.post("ok!")                                   # his own post isn't heard
     fake.say("  and   have fun ")
-    assert discord.new_messages() == ["go chop some oaks", "and have fun"]
+    fake.say("!status")                                    # for the helper: he skips it
+    assert discord.new_messages() == ["go chop some oaks", "and have fun", "!status"]
     assert discord.new_messages() == []
 
 

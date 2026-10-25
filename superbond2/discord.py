@@ -84,12 +84,13 @@ class Discord:
         env = load_config(path)
         return cls(env["DISCORD_TOKEN"], env["DISCORD_CHANNEL_ID"], env["DISCORD_OWNER_ID"])
 
-    def _call(self, method: str, path: str, body: dict | None = None):
-        data = json.dumps(body).encode() if body is not None else None
+    def _call(self, method: str, path: str, body: dict | None = None, raw: bytes | None = None,
+              content_type: str = "application/json"):
+        data = json.dumps(body).encode() if body is not None else raw
         for _ in range(4):
             req = urllib.request.Request(API + path, data=data, method=method, headers={
                 "Authorization": f"Bot {self._token}", "User-Agent": USER_AGENT,
-                "Content-Type": "application/json"})
+                "Content-Type": content_type})
             try:
                 with self.opener(req, timeout=20) as r:
                     raw = r.read()
@@ -115,6 +116,18 @@ class Discord:
             chunk, text = text[:MAX_POST], text[MAX_POST:]
             self._call("POST", f"/channels/{self.channel}/messages",
                        {"content": chunk, "allowed_mentions": {"parse": []}})   # no pings
+
+    def post_file(self, path: Path, text: str = "") -> None:
+        """Attach a file (a bake-off report) to a message."""
+        boundary = f"superbond2{time.time_ns()}"
+        payload = json.dumps({"content": text, "allowed_mentions": {"parse": []}})
+        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"payload_json\"\r\n"
+                f"Content-Type: application/json\r\n\r\n{payload}\r\n"
+                f"--{boundary}\r\nContent-Disposition: form-data; name=\"files[0]\"; "
+                f"filename=\"{Path(path).name}\"\r\nContent-Type: text/markdown\r\n\r\n").encode()
+        body += Path(path).read_bytes() + f"\r\n--{boundary}--\r\n".encode()
+        self._call("POST", f"/channels/{self.channel}/messages", raw=body,
+                   content_type=f"multipart/form-data; boundary={boundary}")
 
     def new_messages(self) -> list[str]:
         """The owner's messages since the last look, oldest first. The first look only finds

@@ -504,6 +504,8 @@ class Brain:
     def listen(self) -> None:
         """Take in what the owner said: commands now, answers and advice for his next turn."""
         for text in self.owner.inbox():
+            if text.startswith("!"):
+                continue                            # for the helper, not him
             word, _, rest = text.strip().partition(" ")
             word = word.lower().strip(".!")
             if word in COMMANDS and (word == "veto" or not rest):

@@ -11,6 +11,7 @@
     python -m superbond2 save-session iron                 # keep the session Bolt started
     python -m superbond2 play --model gemma4:12b --character main  # he can switch to the others
     python -m superbond2 discord-test                      # check the Discord bot's settings
+    python -m superbond2 helper                            # do !jobs asked for on Discord
 
 Mouse into any screen corner stops superbond2 (the kill switch).
 
@@ -209,6 +210,20 @@ def discord_test(_args) -> int:
         return 1
 
 
+def helper(args) -> int:
+    from .discord import Discord, DiscordError
+    from .helper import Helper, write_autostart
+    if args.autostart:
+        print(f"Wrote {write_autostart()}: the helper starts with the desktop from now on.")
+        return 0
+    try:
+        Helper(Discord.from_config(), host=args.host).serve()
+    except DiscordError as e:
+        print(f"Couldn't: {e}")
+        return 1
+    return 0
+
+
 def hover(_args) -> int:
     from .screen import Screen
     from .text import Reader
@@ -321,6 +336,10 @@ def main(argv=None) -> int:
                                          "(default: all of them); he starts on the first")
     pl.add_argument("--log-out", action="store_true", help="log out at the end")
     pl.add_argument("--no-discord", action="store_true", help="don't post to Discord")
+    hp = sub.add_parser("helper", help="do jobs asked for on Discord (!help lists them)")
+    hp.add_argument("--host", default="http://10.0.2.2:11434", help="where Ollama is")
+    hp.add_argument("--autostart", action="store_true", help="start it with the desktop from now on")
+    hp.set_defaults(fn=helper)
     sub.add_parser("discord-test", help="post a test message and wait for a reply").set_defaults(
         fn=discord_test)
     sub.add_parser("characters", help="the characters he can log into").set_defaults(fn=characters)

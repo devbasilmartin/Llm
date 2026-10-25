@@ -1,0 +1,255 @@
+import io
+import json
+import subprocess
+
+import pytest
+
+from superbond2.helper import Helper, write_autostart
+
+
+class StubDiscord:
+    def __init__(self):
+        self.posted, self.files, self.inbox = [], [], []
+
+    def post(self, text):
+        self.posted.append(text)
+
+    def post_file(self, path, text=""):
+        self.files.append((path.name, text))
+
+    def new_messages(self):
+        out, self.inbox = self.inbox, []
+        return out
+
+
+class FakeProc:
+    def __init__(self, lines=(), code=0, on_start=None):
+        self.stdout, self.code, self.signals, self.pid = iter(lines), code, [], 999999
+        self.running = True
+        if on_start:
+            on_start()
+
+    def wait(self, timeout=None):
+        self.running = False
+        return self.code
+
+    def poll(self):
+        return None if self.running else self.code
+
+    def send_signal(self, sig):
+        self.signals.append(sig)
+        self.running = False
+
+    def kill(self):
+        self.running = False
+
+
+class Popen:
+    """Stands in for subprocess.Popen: hands out prepared processes, keeps the commands."""
+
+    def __init__(self, *procs):
+        self.procs, self.cmds = list(procs), []
+
+    def __call__(self, cmd, **kw):
+        self.cmds.append(cmd)
+        return self.procs.pop(0)
+
+
+def ollama(routes):
+    def opener(req, timeout=None):
+        path = req.full_url.split("11434")[1]
+        got = routes[path]
+        if isinstance(got, Exception):
+            raise got
+        if isinstance(got, list):
+            return io.BytesIO(b"".join(json.dumps(x).encode() + b"\n" for x in got))
+        return io.BytesIO(json.dumps(got).encode())
+    return opener
+
+
+@pytest.fixture
+def repo(tmp_path):
+    r = tmp_path / "repo"
+    (r / "data").mkdir(parents=True)
+    return r
+
+
+def helper(repo, popen=None, routes=None):
+    d = StubDiscord()
+    h = Helper(d, repo=repo, popen=popen or Popen(), opener=ollama(routes or {}), log=lambda s: None)
+    return h, d
+
+
+def wait_for_job(h):
+    if h.job:
+        h.job[1].join(5)
+
+
+def test_help_and_unknown_commands(repo):
+    h, d = helper(repo)
+    h.handle("!help")
+    assert "!bakeoff" in d.posted[-1] and d.posted[-1].startswith("```")
+    h.handle("!rm -rf /")
+    assert d.posted[-1] == "I don't know `!rm`. `!help` lists what I can do."
+    h.handle("!models a b c")
+    assert "doesn't take those" in d.posted[-1]
+    h.handle("!stop")
+    assert "`stop` (no !)" in d.posted[-1]
+
+
+def test_status(repo):
+    h, d = helper(repo, routes={"/api/ps": {"models": [{"name": "gemma4:12b"}]}})
+    h.handle("!status")
+    text = d.posted[-1]
+    assert "💤 superbond2 isn't playing." in text and "loaded: gemma4:12b" in text
+    assert "Disk free" in text
+    import urllib.error
+    h.opener = ollama({"/api/ps": urllib.error.URLError("refused")})
+    h.handle("!status")
+    assert "Can't reach Ollama" in d.posted[-1] and "OLLAMA_HOST=0.0.0.0" in d.posted[-1]
+
+
+def test_models_and_pull(repo):
+    h, d = helper(repo, routes={"/api/tags": {"models": [{"name": "gemma4:12b", "size": 8.1e9}]},
+                                "/api/pull": [{"status": "pulling manifest"}] + [
+                                    {"status": "pulling", "total": 8e9, "completed": c * 1e9}
+                                    for c in range(9)] + [{"status": "success"}]})
+    h.handle("!models")
+    assert d.posted[-1] == "Models: gemma4:12b (8.1 GB)"
+    h.handle("!pull gemma4:12b")
+    wait_for_job(h)
+    assert d.posted[1] == "⬇️ Downloading gemma4:12b..."
+    assert [p for p in d.posted if "%" in p] == ["gemma4:12b: 0% of 8.0 GB", "gemma4:12b: 25% of 8.0 GB",
+                                                  "gemma4:12b: 50% of 8.0 GB", "gemma4:12b: 75% of 8.0 GB",
+                                                  "gemma4:12b: 100% of 8.0 GB"]
+    assert d.posted[-1] == "✅ gemma4:12b is ready."
+    h.handle("!pull gemma4:12b;reboot")
+    assert "doesn't look like a model name" in d.posted[-1]
+
+
+def test_a_failed_download_says_how_to_resume(repo):
+    h, d = helper(repo, routes={"/api/pull": [{"status": "pulling", "total": 8e9, "completed": 1e9}]})
+    h.handle("!pull gemma4:12b")
+    wait_for_job(h)
+    assert "`!pull gemma4:12b` again resumes it" in d.posted[-1]
+
+
+def test_the_bakeoff_reports_back_with_the_file(repo):
+    out = repo / "bench" / "results"
+
+    def write_report():
+        out.mkdir(parents=True)
+        (out / "bakeoff-20261025-1200.md").write_text("# results")
+    lines = ["=== gemma4:12b\n", "  loaded in 40.0 s\n"] + \
+            [f"  [{i:2}/21] d{i} something  ok  (9.0 s)\n" for i in range(1, 22)] + ["| model | score |\n"]
+    popen = Popen(FakeProc(lines, on_start=write_report))
+    h, d = helper(repo, popen)
+    h.handle("!bakeoff gemma4:12b")
+    wait_for_job(h)
+    assert popen.cmds[0][1:] == ["bench/bakeoff.py", "--host", "http://10.0.2.2:11434",
+                                 "--models", "gemma4:12b"]
+    assert "=== gemma4:12b" in d.posted and sum(p.startswith("  [") for p in d.posted) == 3
+    assert d.posted[-1].startswith("✅ Bake-off done:") and "| model | score |" in d.posted[-1]
+    assert d.files == [("bakeoff-20261025-1200.md", "Here's the full report. Send it to Claude.")]
+
+
+def test_one_long_job_at_a_time_and_kill(repo):
+    import threading
+    killed = threading.Event()
+
+    def output():                                           # goes on until it's killed
+        while not killed.is_set():
+            killed.wait(0.01)
+            yield "still going\n"
+    proc = FakeProc(output())
+    proc.send_signal = lambda sig: (proc.signals.append(sig), killed.set())
+    h, d = helper(repo, Popen(proc))
+    h.handle("!tests")
+    import time
+    while h.proc is None:
+        time.sleep(0.01)
+    h.handle("!bakeoff")
+    assert d.posted[-1].startswith("Busy with the tests")
+    h.handle("!kill")
+    assert proc.signals and d.posted[-1] == "Stopped the tests."
+    wait_for_job(h)
+    assert not h._busy()
+
+
+def test_play_log_and_kill(repo):
+    proc = FakeProc()
+    popen = Popen(proc)
+    h, d = helper(repo, popen)
+    h.handle("!play gemma4:12b iron 90")
+    assert popen.cmds[0][-2:] == ["--character", "iron"] and "90" in popen.cmds[0]
+    assert d.posted[-1].startswith("🎮 Starting him on gemma4:12b as iron for 90 minutes")
+    h.handle("!play gemma4:12b")
+    assert d.posted[-1].startswith("He's already playing")
+    (repo / "data" / "play.log").write_text("".join(f"[{i}] wait -> ok\n" for i in range(30)))
+    h.handle("!log 3")
+    assert d.posted[-1] == "```\n[27] wait -> ok\n[28] wait -> ok\n[29] wait -> ok\n```"
+    h.handle("!play x iron ninety")
+    proc.running = False
+    h.handle("!play gemma4:12b bad/name")
+    assert d.posted[-1] == "`bad/name` isn't a character name."
+
+
+def test_kill_finds_a_game_it_didnt_start(repo, monkeypatch):
+    import os
+    child = subprocess.Popen(["sleep", "30"])
+    (repo / "data" / "playing.lock").write_text(str(child.pid))
+    h, d = helper(repo, routes={"/api/ps": {"models": []}})
+    h.handle("!status")
+    assert "🎮 superbond2 is playing." in d.posted[-1]
+    h.handle("!kill")
+    assert d.posted[-1] == "Stopped his play."
+    assert child.wait(5) != 0
+    os.remove(repo / "data" / "playing.lock")
+
+
+def run(cmd, cwd):
+    subprocess.run(cmd, cwd=cwd, check=True, capture_output=True)
+
+
+def test_update_pulls_and_restarts_when_its_code_changed(tmp_path):
+    origin, mine, theirs = tmp_path / "origin.git", tmp_path / "mine", tmp_path / "theirs"
+    run(["git", "init", "-q", "--bare", "-b", "bench-bakeoff", str(origin)], tmp_path)
+    run(["git", "clone", "-q", str(origin), str(theirs)], tmp_path)
+    for args in (["config", "user.email", "t@t"], ["config", "user.name", "t"]):
+        run(["git", *args], theirs)
+    (theirs / "README.md").write_text("hi\n")
+    run(["git", "add", "."], theirs)
+    run(["git", "commit", "-qm", "first"], theirs)
+    run(["git", "push", "-q", "origin", "HEAD:bench-bakeoff"], theirs)
+    run(["git", "clone", "-q", "-b", "bench-bakeoff", str(origin), str(mine)], tmp_path)
+    h, d = helper(mine)
+    h.handle("!update")
+    assert d.posted[-1] == "Already up to date."
+    (theirs / "superbond2").mkdir()
+    (theirs / "superbond2" / "helper.py").write_text("# new\n")
+    run(["git", "add", "."], theirs)
+    run(["git", "commit", "-qm", "a better helper"], theirs)
+    run(["git", "push", "-q", "origin", "HEAD:bench-bakeoff"], theirs)
+    h.handle("!update")
+    assert d.posted[-1].endswith("a better helper.") and h.restart
+
+
+def test_autostart_file(tmp_path):
+    path = write_autostart(tmp_path / "autostart" / "superbond2-helper.desktop")
+    text = path.read_text()
+    assert "-m superbond2 helper" in text and "X-GNOME-Autostart-enabled=true" in text
+
+
+def test_he_ignores_messages_for_the_helper(tmp_path):
+    from superbond2.actions import Actions
+    from superbond2.brain import Brain, Owner
+    from superbond2.eyes import Eyes
+    from superbond2.hands import SimBody
+    from superbond2.memory import Memory
+    from superbond2.sim import lumbridge
+    owner = Owner(log=lambda s: None)
+    b = Brain(None, Actions(SimBody(lumbridge()), Eyes()), Memory(tmp_path / "m"), owner,
+              log=lambda s: None)
+    owner.said += ["!status", "!kill"]
+    b.listen()
+    assert b.recent == [] and not b.stopped

@@ -242,6 +242,10 @@ his goal, `pause`, `resume`, `stop`, or give advice from your phone. Only your a
 listened to. Setup: [docs/discord.md](../docs/discord.md); then `python -m superbond2
 discord-test`. `play` uses it whenever `~/.config/superbond2/discord.env` exists.
 
+The helper (`python -m superbond2 helper`) does fixed jobs asked for in the same channel
+with a `!`: `!status`, `!pull`, `!bakeoff`, `!update`, `!play`... See
+[docs/remote.md](../docs/remote.md), which also covers Claude Remote Control on Windows.
+
 ### Characters
 
 He's one player with several accounts, like a real person. You start him on one; he plays one
