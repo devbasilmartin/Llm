@@ -10,6 +10,7 @@
     python -m superbond2 characters                        # the characters he can log into
     python -m superbond2 save-session iron                 # keep the session Bolt started
     python -m superbond2 play --model gemma4:12b --character main  # he can switch to the others
+    python -m superbond2 discord-test                      # check the Discord bot's settings
 
 Mouse into any screen corner stops superbond2 (the kill switch).
 
@@ -116,8 +117,9 @@ def run_routine(args) -> int:
 
 def play(args) -> int:
     from .actions import Actions
-    from .brain import Brain
+    from .brain import Brain, DiscordOwner, Owner
     from .characters import Characters, LoginError, Session, claim, release
+    from .discord import CONFIG, Discord, DiscordError
     from .hands import RealBody, SimBody, Stopped
     from .memory import Memory
     from .model import Ollama
@@ -141,6 +143,15 @@ def play(args) -> int:
     wiki = None if args.no_wiki else Wiki(DATA / "wiki-cache")
     eyes = Eyes()
     session = Session(body, eyes, Characters()) if start else None
+    owner = Owner()
+    if not args.no_discord and CONFIG.exists():
+        try:
+            discord = Discord.from_config()
+            discord.hello()
+            discord.new_messages()                   # start from now
+            owner = DiscordOwner(discord)
+        except DiscordError as e:
+            print(f"Discord is off: {e}")
     lock = DATA / "playing.lock"
     try:
         if not args.sim:
@@ -150,8 +161,9 @@ def play(args) -> int:
                 session.log_out()
             print(f"Logging in {start}...")
             session.log_in(start)
-        brain = Brain(model, Actions(body, eyes), Memory(folder), wiki=wiki,
+        brain = Brain(model, Actions(body, eyes), Memory(folder), owner, wiki=wiki,
                       session=session, character=start, accounts=accounts)
+        owner.tell(f"👋 Playing{' ' + start if start else ''} now.")
         others = [a for a in accounts if a != start]
         print(f"superbond2 is playing{' ' + start if start else ''} with {args.model}; memory in "
               f"{folder}." + (f" He can switch to: {', '.join(others)}." if others else "") +
@@ -161,13 +173,40 @@ def play(args) -> int:
             session.log_out()
     except Stopped as e:
         print(f"Stopped: {e}")
+        owner.tell(f"🛑 Stopped from the PC: {e}")
     except LoginError as e:
         print(f"Can't go on: {e}")
+        owner.tell(f"⚠️ I've had to stop: {e}")
         return 1
     finally:
         if not args.sim:
             release(lock)
     return 0
+
+
+def discord_test(_args) -> int:
+    from .discord import CONFIG, HELP, Discord, DiscordError
+    try:
+        d = Discord.from_config()
+        print("Gateway: " + ("connected once" if d.hello() else
+                             "skipped (pip install websocket-client to connect once)"))
+        d.post("👋 superbond2 here! This is a test. " + HELP)
+        print("Posted a test message. Reply in the channel within 60 seconds...")
+        d.new_messages()
+        import time
+        for _ in range(12):
+            time.sleep(5)
+            heard = d.new_messages()
+            if heard:
+                print(f"Heard you: {heard[0]!r}. Discord works both ways.")
+                d.post("Got it, I can hear you. 🎉")
+                return 0
+        print("Heard nothing. If you replied: turn on Message Content Intent for the bot in "
+              f"the Developer Portal, and check DISCORD_OWNER_ID in {CONFIG}.")
+        return 1
+    except DiscordError as e:
+        print(f"Couldn't: {e}")
+        return 1
 
 
 def hover(_args) -> int:
@@ -281,6 +320,9 @@ def main(argv=None) -> int:
     pl.add_argument("--characters", help="only these may be played, comma separated "
                                          "(default: all of them); he starts on the first")
     pl.add_argument("--log-out", action="store_true", help="log out at the end")
+    pl.add_argument("--no-discord", action="store_true", help="don't post to Discord")
+    sub.add_parser("discord-test", help="post a test message and wait for a reply").set_defaults(
+        fn=discord_test)
     sub.add_parser("characters", help="the characters he can log into").set_defaults(fn=characters)
     ss = sub.add_parser("save-session", help="keep the session of the RuneLite Bolt just started")
     ss.add_argument("name", help="what to call the character, e.g. main or iron")

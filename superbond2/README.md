@@ -235,6 +235,13 @@ also lists the RuneLite settings and plugins that help him (and the ones to be c
 The hover text position and the menu rows aren't measured on the real client yet:
 `python -m superbond2 hover` reads what's under the mouse and saves the picture.
 
+### Discord
+
+He posts highlights and a daily summary to a private channel, and you can answer, `veto`
+his goal, `pause`, `resume`, `stop`, or give advice from your phone. Only your account is
+listened to. Setup: [docs/discord.md](../docs/discord.md); then `python -m superbond2
+discord-test`. `play` uses it whenever `~/.config/superbond2/discord.env` exists.
+
 ### Characters
 
 He's one player with several accounts, like a real person. You start him on one; he plays one

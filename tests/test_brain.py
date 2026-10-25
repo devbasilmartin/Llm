@@ -89,7 +89,8 @@ def test_a_goal_note_and_journal_are_kept_and_shown(game, memory):
     for _ in range(4):
         b.turn()
     assert memory.goal()["goal"] == "Woodcutting 30"
-    assert said == ["[to owner] New goal: Woodcutting 30. Why: oaks are right here"]
+    assert said == ["[to owner] New goal: Woodcutting 30. Why: oaks are right here",
+                    "[to owner] 📓 First day. Chopping oaks."]
     assert "Oaks run out after a few logs and grow back." in memory.notes()
     assert "First day. Chopping oaks." in memory.journal_file.read_text()
     p = b.model.prompts[3]

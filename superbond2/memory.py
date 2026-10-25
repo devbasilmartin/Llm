@@ -106,7 +106,15 @@ class Memory:
 
     def goal(self) -> dict | None:
         g = self.goals()
-        return g[-1] if g else None
+        return g[-1] if g and not g[-1].get("vetoed") else None
+
+    def veto_goal(self, why: str = "") -> dict | None:
+        """The owner said no to the current goal. Returns it, or None if there's none."""
+        goal = self.goal()
+        if goal is not None:
+            g = self.goals() + [{**goal, "vetoed": True, "why": why, "set": _now()}]
+            self.goals_file.write_text(yaml.safe_dump(g, sort_keys=False, allow_unicode=True))
+        return goal
 
     def turns_since_goal(self, now: int) -> int | None:
         g = self.goal()
