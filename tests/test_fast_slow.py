@@ -55,10 +55,12 @@ def test_no_goal_is_for_the_thoughtful_brain(game, memory, tmp_path):
 
 
 def test_the_fast_brain_hands_over_when_it_needs_thought(game, memory):
-    fast = Scripted(("think_it_over", {"why": "a cow is attacking me"}),
+    fast = Scripted(*[("wait", {"seconds": i}) for i in (1, 2, 3)],
+                    ("think_it_over", {"why": "a cow is attacking me"}),
                     ("set_goal", {"goal": "x", "reason": "y"}), WAIT)
     slow = Scripted(WAIT, WAIT)
     b = two(game, memory, fast, slow)
+    b.turn(), b.turn(), b.turn()
     assert b.turn().result == "you'll think it over next turn"
     b.turn()
     assert slow.prompts[0].endswith("Time to think it over: a cow is attacking me.")
@@ -207,3 +209,12 @@ def test_a_routine_that_doesnt_exist_yet_is_for_the_thoughtful_brain(game, memor
     b.turn()
     b.turn()
     assert slow.prompts[0].endswith("there's no routine called 'oak loop' yet.")
+
+
+def test_no_asking_to_think_again_right_after_thinking(game, memory):
+    fast = Scripted(("think_it_over", {"why": "same old thing"}))
+    b = two(game, memory, fast, Scripted())
+    b.turns = b.last_slow = 10
+    t = b.turn()
+    assert not t.ok and t.result == "you thought it over 1 turns ago; carry on with the plan"
+    assert b.need_thought == ""

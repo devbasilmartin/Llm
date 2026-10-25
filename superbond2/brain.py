@@ -167,6 +167,7 @@ FAST_NAMES = {t["function"]["name"] for t in FAST_TOOLS}
 BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_routine", "switch_character")]
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
+THINK_COOLDOWN = 3          # turns after a thoughtful one before the fast brain may ask again
 FAST_RECENT = 5             # turns shown to the fast brain
 RECENT = 8                  # turns shown in the prompt
 NOTES_SHOWN = 40            # newest notes shown in the prompt
@@ -560,6 +561,9 @@ class Brain:
         m = self.memory
         try:
             if name == "think_it_over":
+                if self.turns - self.last_slow < THINK_COOLDOWN:
+                    return Result(False, f"you thought it over {self.turns - self.last_slow} turns "
+                                  "ago; carry on with the plan")
                 self.need_thought = str(args.get("why") or "you asked to think it over")
                 return Result(True, "you'll think it over next turn")
             if name == "run_routine":
