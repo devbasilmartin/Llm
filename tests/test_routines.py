@@ -263,3 +263,8 @@ def test_the_summary_says_what_came_in_along_the_way():
     result = runner(lumbridge(seed=4)).run(r)
     assert f"Gained along the way: +{SLOTS - 4} oak logs." in result.said
     assert result.said.endswith("Inventory now vs. before: nothing changed")
+
+
+def test_stray_empty_steps_are_skipped():
+    r = simple_routine("chop", "x", ["click_nearest oak_tree", "", "wait 2", "  "], after=["", "click_nearest bank"])
+    assert len(r["steps"]) == 3

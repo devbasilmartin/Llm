@@ -198,6 +198,8 @@ def simple_routine(name: str, about: str, steps: list[str], until: str = "", tim
         steps = [s for s in steps.replace(";", "\n").splitlines() if s.strip()]
     if isinstance(after, str):
         after = [s for s in after.replace(";", "\n").splitlines() if s.strip()]
+    steps = [s for s in steps if str(s).strip()]            # small models leave stray "" steps
+    after = [s for s in after or () if str(s).strip()]
     if not steps:
         raise RoutineError("steps must list at least one step, like ['click_nearest oak_tree if "
                            "idle', 'wait 2']")
