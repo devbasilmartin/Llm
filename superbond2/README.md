@@ -336,6 +336,18 @@ he got his personality:
 
 The bake-off decides the real model.
 
+Then two brains (granite4.1:8b thinking, granite4.1:3b for quick turns, 25 turns):
+
+- **Speed:** quick turns took 9-24 s of model time (about 17 typical), thoughtful ones about
+  100-110 s. 18 of the 25 turns were quick. The quick ones slowed down as long routine
+  reports filled their prompt, so those lines are now cut short.
+- **What he did:** the thoughtful brain set the goal; the quick one chopped by hand, then ran
+  the routine the thoughtful one wrote when handed the "do it by hand three times" moment.
+  The routine failed twice the same way and the thoughtful brain fixed it; after that it
+  brought in 27 oak logs a run, 78 actions in one turn.
+- **What went wrong:** the quick brain tried to run a routine nobody had saved, and kept
+  copying an old `think_it_over` from its recent turns. Both now hand over or are refused.
+
 ## The simulated game
 
 `sim.py` draws a small scene the way RuneLite draws the real one: oaks, a tree, a copper
