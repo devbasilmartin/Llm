@@ -443,6 +443,55 @@ class Actions:
         self._in_amounts(where, "Sell", int(quantity))
         return self._after(before, f"sold {item.replace('_', ' ')}", settle=0.3)
 
+    # --- fighting --------------------------------------------------------------------------------
+    def attack(self, name: str, max_level: int = 0) -> Result:
+        """Attack the nearest `name` (a highlight, e.g. cow or enemy), skipping any above
+        max_level (their level is in the hover text). max_level 0: any."""
+        import re
+        name, before = as_name(name), self.view
+        now = self.look()
+        targets = sorted((h for h in now.highlights if h.name == name), key=lambda h: h.distance)
+        if not targets:
+            seen = sorted({h.name for h in now.highlights})
+            return Result(False, f"no {name} in sight (I can see: {', '.join(seen) or 'nothing'})")
+        skipped = []
+        for h in targets:
+            hover = self.body.read_hover(h.center)
+            m = re.search(r"\(level-(\d+)\)", hover.name) if hover else None
+            level = int(m[1]) if m else None
+            if max_level and level is not None and level > int(max_level):
+                skipped.append(level)
+                continue
+            self.body.click(h.center)
+            who = hover.name if hover else name
+            return self._after(before, f"attacking {who}")
+        return Result(False, f"every {name} in sight is over level {max_level} (levels {', '.join(map(str, skipped))})")
+
+    def pick_up(self, item: str = "") -> Result:
+        """Pick up loot from the ground: `item` (e.g. bones), or the nearest loot of any kind."""
+        want, before = as_name(item) if item else "", self.view
+        now = self.look()
+        for h in sorted((h for h in now.highlights if h.name == "loot"), key=lambda h: h.distance):
+            hover = self.body.read_hover(h.center)
+            if want and (hover is None or as_name(hover.name) != want):
+                continue
+            self.body.click(h.center)
+            return self._after(before, f"picked up {hover.name if hover else 'the loot'}")
+        return Result(False, f"no {item or 'loot'} on the ground in sight")
+
+    def set_style(self, style: str) -> Result:
+        """Which skill fighting trains: attack, strength or defence (the Combat tab)."""
+        style = str(style).strip().lower()
+        lay = self.eyes.layout
+        if style not in lay.combat_styles:
+            return Result(False, f"a style is one of: {', '.join(lay.combat_styles)}")
+        self.body.click(lay.tabs["combat"])
+        self.body.wait(0.6)
+        self.body.click(lay.combat_styles[style])
+        self.body.wait(0.3)
+        self.body.click(lay.tabs["inventory"])
+        return Result(True, f"fighting now trains {style}")
+
     # --- the Grand Exchange ---------------------------------------------------------------------
     def _ge(self) -> Result | None:
         """Open the Grand Exchange through a clerk, if it isn't open; None when it's open."""
@@ -757,7 +806,7 @@ class Actions:
 
 
 def _spec(action: str, description: str, /, **params: str) -> dict:
-    ints = {"slot", "seconds", "timeout", "quantity", "price"}
+    ints = {"slot", "seconds", "timeout", "quantity", "price", "max_level"}
     props = {p: {"type": "integer" if p in ints else "string", "description": d}
              for p, d in params.items()}
     return {"type": "function", "function": {
@@ -798,6 +847,16 @@ ACTIONS = [
     {"type": "function", "function": {
         "name": "ge_collect", "description": Actions.ge_collect.__doc__,
         "parameters": {"type": "object", "required": [], "properties": {}}}},
+    {"type": "function", "function": {
+        "name": "attack", "description": Actions.attack.__doc__,
+        "parameters": {"type": "object", "required": ["name"], "properties": {
+            "name": {"type": "string", "description": "A highlight name, e.g. cow, enemy."},
+            "max_level": {"type": "integer", "description": "Skip any above this level."}}}}},
+    {"type": "function", "function": {
+        "name": "pick_up", "description": Actions.pick_up.__doc__,
+        "parameters": {"type": "object", "required": [], "properties": {
+            "item": {"type": "string", "description": "Optional: what to pick up, e.g. bones."}}}}},
+    _spec("set_style", Actions.set_style.__doc__, style="attack, strength or defence."),
     _spec("equip", Actions.equip.__doc__, item="An item in your inventory, e.g. bronze sword."),
     _spec("unequip", Actions.unequip.__doc__, item="Something you're wearing, e.g. wooden shield."),
     _spec("walk_to", Actions.walk_to.__doc__, place="A place name, e.g. draynor bank, grand exchange."),
@@ -821,7 +880,8 @@ def do(actions: Actions, name: str, args: dict) -> Result:
     the brain hears about, not a crash."""
     if name not in {a["function"]["name"] for a in ACTIONS}:
         return Result(False, f"there's no action called {name}")
-    args = {k: int(v) if k in ("slot", "seconds", "timeout", "quantity", "price") and str(v).strip().isdigit() else v
+    args = {k: int(v) if k in ("slot", "seconds", "timeout", "quantity", "price", "max_level")
+            and str(v).strip().isdigit() else v
             for k, v in args.items()}                  # models often send "5" for 5
     try:
         return getattr(actions, name)(**args)

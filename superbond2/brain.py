@@ -163,6 +163,8 @@ OWN_TOOLS = [
                                                       "trout, shrimps."},
             "flee_below": {"type": "integer", "description": "With no food, run when HP is below "
                                                              "this percent (0 turns it off)."},
+            "loot": {"type": "string", "description": "Items to pick up by themselves when they "
+                                                      "drop, comma separated, e.g. bones, cowhide."},
         }}}},
 ]
 SLEEP_TOOLS = [{"type": "function", "function": {
@@ -357,8 +359,19 @@ class Reflexes:
                     return None
         if r.get("flee_below") and hp < r["flee_below"]:
             return self._flee(hp)
+        if r.get("loot") and view.nearest("loot") is not None and None in view.inventory:
+            self._loot(view, r["loot"])
         self.fled = None
         return f"HP {round(hp)}% and no food ({', '.join(r['food'])})" if hungry else None
+
+    def _loot(self, view: View, wanted: list[str]) -> None:
+        """Pick up the nearest loot on his list (one a call: the next look picks the next)."""
+        from .actions import as_name
+        for h in sorted((h for h in view.highlights if h.name == "loot"), key=lambda h: h.distance):
+            hover = self.actions.body.read_hover(h.center)
+            if hover is not None and as_name(hover.name) in wanted:
+                self.last = f"reflex: {self.actions.pick_up(hover.name).said}"
+                return
 
     def _flee(self, hp: float) -> str | None:
         if self.fled is not None and hp >= self.fled:   # ran, and nothing's hitting him now:
@@ -724,8 +737,10 @@ class Brain:
                 food = [f.strip().lower().replace(" ", "_") for f in str(args["food"]).split(",")
                         if f.strip()]
                 flee = args.get("flee_below")
+                loot = None if args.get("loot") is None else \
+                    [x.strip().lower().replace(" ", "_") for x in str(args["loot"]).split(",") if x.strip()]
                 m.set_reflexes(max(0, min(int(args["eat_below"]), 95)), food,
-                               None if flee in (None, "") else max(0, min(int(flee), 90)))
+                               None if flee in (None, "") else max(0, min(int(flee), 90)), loot)
                 return Result(True, "reflexes set")
         except (RoutineError, WikiError) as e:
             return Result(False, str(e))

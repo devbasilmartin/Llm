@@ -77,6 +77,9 @@ class Layout:
     # the Quest tab: "Quest Points: 12" at the top, then the list, colored by state (a guess)
     quest_points_text: Rect = Rect(553, 210, 180, 16)
     quest_list: Rect = Rect(553, 230, 170, 230)
+    # the Combat tab's style buttons, for most weapons (a guess until measured)
+    combat_styles: dict = field(default_factory=lambda: {
+        "attack": (600, 260), "strength": (680, 260), "defence": (680, 315)})
     # the Equipment tab's slots (a guess until measured)
     equipment_slots: dict = field(default_factory=lambda: {
         "head": (641, 219), "cape": (600, 258), "neck": (641, 258), "ammo": (682, 258),

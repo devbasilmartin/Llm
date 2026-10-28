@@ -19,7 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **17. Smarter combat.** Targets by level, loot rules, burying bones, attack styles.
 - [ ] **Vampyre Slayer with real models.** `play --sim --world vampyre` with the two brains;
   write up how far they get and what trips them, and fix what's ours to fix.
 - [ ] **25. A BPE tokenizer** for the tiny GPT, compared with letters (learn/).
@@ -50,11 +49,15 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   ge_collect) are guesses. Try `do ge_buy item=feather quantity=10 price=5` while you watch.
 - Decide: on this server, are real-game GE prices a fair guide? (The high-alchemy guard holds
   anywhere; the 3x-the-going-rate one uses the real game's prices.)
+- The Combat tab open (with a weapon): a screenshot (no name shows), to place the style buttons.
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **17. Smarter combat**: `attack <monster> max_level` (levels from the hover text), his combat
+  level in the Levels line, `set_style` (Combat tab), burying bones, `pick_up`, and a loot
+  reflex for items on his list (`set_reflexes loot=bones, cowhide`).
 - **16. The Grand Exchange**: `ge_buy`, `ge_sell`, `ge_collect` through a clerk's Exchange;
   sells under high-alchemy value (from the wiki's item value) or prices 3x off the wiki's live
   price need sure=yes; typing only into the GE's boxes, names and numbers only. Sim market;

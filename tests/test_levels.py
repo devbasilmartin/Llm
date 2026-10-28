@@ -26,9 +26,9 @@ def test_the_xp_table():
 
 def test_the_prompt_line():
     lv = levels.starting_levels()
-    assert levels.line(lv) == "Levels: all 1 (hitpoints 10): a fresh start"
+    assert levels.line(lv) == "Levels: all 1 (hitpoints 10): a fresh start; combat level 3"
     lv |= {"woodcutting": 15, "attack": 3}
-    assert levels.line(lv) == "Levels: woodcutting 15, attack 3; the rest 1"
+    assert levels.line(lv) == "Levels: woodcutting 15, attack 3; the rest 1; combat level 4"
 
 
 def test_reading_the_skills_tab():

@@ -28,6 +28,16 @@ def starting_levels() -> dict[str, int]:
     return {s: (10 if s == "hitpoints" else 1) for s in SKILLS}
 
 
+def combat_level(lv: dict) -> int:
+    """The game's combat level formula."""
+    g = lambda s: lv.get(s, 10 if s == "hitpoints" else 1)
+    base = 0.25 * (g("defence") + g("hitpoints") + g("prayer") // 2)
+    melee = 0.325 * (g("attack") + g("strength"))
+    ranged = 0.325 * (3 * g("ranged") // 2)
+    magic = 0.325 * (3 * g("magic") // 2)
+    return int(base + max(melee, ranged, magic))
+
+
 def changes(before: dict, after: dict) -> list[tuple[str, int, int]]:
     """(skill, from, to) for each skill that went up."""
     return [(s, before.get(s, 1), after[s]) for s in SKILLS if after.get(s, 1) > before.get(s, 1)]
@@ -37,6 +47,7 @@ def line(levels: dict) -> str:
     """For the prompt: what's been trained, highest first, and combat basics."""
     trained = sorted(((lv, s) for s, lv in levels.items() if lv > (10 if s == "hitpoints" else 1)),
                      reverse=True)
+    combat = f"; combat level {combat_level(levels)}"
     if not trained:
-        return "Levels: all 1 (hitpoints 10): a fresh start"
-    return "Levels: " + ", ".join(f"{s} {lv}" for lv, s in trained) + "; the rest 1"
+        return "Levels: all 1 (hitpoints 10): a fresh start" + combat
+    return "Levels: " + ", ".join(f"{s} {lv}" for lv, s in trained) + "; the rest 1" + combat

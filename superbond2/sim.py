@@ -69,6 +69,7 @@ class Thing:
     goes: tuple | None = None    # stairs, ladders, trapdoors: where climbing takes you
     needs: tuple = ()            # a monster that can't be killed without these items
     shop: dict | None = None     # a shopkeeper: item -> price
+    level: int = 0               # a monster's combat level (in its hover text)
 
     def here(self, t: float) -> bool:
         return t >= self.gone_until
@@ -115,6 +116,7 @@ class SimGame:
         self.flags: set[str] = set()                        # what conversations have set
         self.quest_points = 0
         self.xp: Counter = Counter()          # skill -> XP
+        self.style = "attack"                 # which skill fighting trains
         self.equipment: dict[str, str] = {}   # slot -> item
         self.using: int | None = None          # "Use" picked on this slot: the next click is what on
         self.cooking: str | None = None        # raw food waiting on "how many?" (space: all)
@@ -134,6 +136,8 @@ class SimGame:
     def add(self, name: str, kind: str, x: int, y: int, w: int = 30, h: int = 40, **kw) -> Thing:
         thing = Thing(name, kind, Rect(self.layout.viewport.x + x, self.layout.viewport.y + y, w, h), **kw)
         label, verb = LABELS.get(name, (name.replace("_", " ").capitalize(), "Examine"))
+        if name == "loot" and kw.get("gives"):              # loot is called what it is
+            label = kw["gives"].replace("_", " ").capitalize()
         thing.label, thing.verb = thing.label or label, thing.verb or verb
         self.things.append(thing)
         return thing
@@ -177,6 +181,11 @@ class SimGame:
         if self._tab == "logout" and abs(pt[0] - self.layout.logout_button[0]) <= 40 and \
                 abs(pt[1] - self.layout.logout_button[1]) <= 12:
             self.screen, self.doing, self._tab = "login", None, "inventory"
+            return
+        if self._tab == "combat":            # the attack style buttons
+            for style, at in self.layout.combat_styles.items():
+                if abs(pt[0] - at[0]) <= 25 and abs(pt[1] - at[1]) <= 15:
+                    self.style = style
             return
         if self._tab == "equipment":         # the panel shows what he wears, not the bag
             for where, at in self.layout.equipment_slots.items():
@@ -262,7 +271,8 @@ class SimGame:
         thing = self._under(pt) if self.screen == "game" else None
         if thing is None:
             return None
-        return Hover(f"{thing.verb} {thing.label}", thing.label, HOVER_KIND.get(thing.kind, "object"))
+        label = f"{thing.label} (level-{thing.level})" if thing.level else thing.label
+        return Hover(f"{thing.verb} {label}", label, HOVER_KIND.get(thing.kind, "object"))
 
     def open_menu(self, pt, shift: bool = False) -> list:
         lay = self.layout
@@ -522,6 +532,9 @@ class SimGame:
         elif item in FOOD:
             self.inventory[i] = None
             self.hp = min(self.max_hp, self.hp + FOOD[item])
+        elif item in ("bones", "big_bones"):            # left-click buries
+            self.inventory[i] = None
+            self.xp["prayer"] += 4.5 if item == "bones" else 15
 
     def _pay(self, n: int) -> bool:
         if self.coins < n:
@@ -693,7 +706,7 @@ class SimGame:
     def _fight(self, thing: Thing) -> None:
         hit = self.rng.randint(0, 3)
         thing.hp -= hit
-        self.xp["attack"] += 4 * hit
+        self.xp[self.style] += 4 * hit
         self.xp["hitpoints"] += 1.33 * hit
         if thing.hp <= 0 and thing.needs and not all(n in self.inventory for n in thing.needs):
             thing.hp = 25                                   # rises again: it needs more than that

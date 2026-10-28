@@ -290,6 +290,14 @@ highlights), `continue_dialogue` (space) and `choose` (an option's number or wor
 number keys). All three work as routine steps too. In the sim, NPCs have scripts that can
 give items and set quest flags.
 
+### Fighting
+
+`attack <monster> max_level=N` attacks the nearest one at or under level N (the level is in the
+hover text, "Attack Goblin (level-5)"); his combat level is in his Levels line. `set_style
+attack|strength|defence` picks what fighting trains (the Combat tab). Clicking bones buries
+them. `pick_up <item>` takes loot; and items he lists with `set_reflexes loot=bones, cowhide`
+are picked up by reflex when they drop.
+
 ### Gear
 
 `equip <item>` wields or wears it (Wield or Wear from its right-click menu; what was worn there

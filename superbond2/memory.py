@@ -39,7 +39,7 @@ OFFER = [
     "outlines loot, Player Indicators other players, Inventory Tags my items, Status Bars my HP. "
     "Quest Helper, when it's on, outlines the next step of a quest as `quest_target`.",
 ]
-DEFAULT_REFLEXES = {"eat_below": 40, "flee_below": 25, "food": ["trout", "shrimps", "lobster", "cooked_meat",
+DEFAULT_REFLEXES = {"eat_below": 40, "flee_below": 25, "loot": [], "food": ["trout", "shrimps", "lobster", "cooked_meat",
                                               "anchovies", "shark", "swordfish"]}
 MAX_NOTE = 300              # characters in one note
 MAX_NOTES = 200
@@ -182,12 +182,12 @@ class Memory:
             return dict(DEFAULT_REFLEXES)
         return {**DEFAULT_REFLEXES, **(yaml.safe_load(self.reflex_file.read_text()) or {})}
 
-    def set_reflexes(self, eat_below: int, food: list[str], flee_below: int | None = None) -> None:
+    def set_reflexes(self, eat_below: int, food: list[str], flee_below: int | None = None,
+                     loot: list[str] | None = None) -> None:
         r = {"eat_below": int(eat_below), "food": food}
-        if flee_below is not None:
-            r["flee_below"] = int(flee_below)
-        elif self.reflex_file.exists():
-            r["flee_below"] = self.reflexes()["flee_below"]
+        old = self.reflexes() if self.reflex_file.exists() else {}
+        r["flee_below"] = int(flee_below) if flee_below is not None else old.get("flee_below", 25)
+        r["loot"] = list(loot) if loot is not None else old.get("loot", [])
         self.reflex_file.write_text(yaml.safe_dump(r))
 
     # --- decision log ---------------------------------------------------------------------
