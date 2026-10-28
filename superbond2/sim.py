@@ -481,8 +481,8 @@ class SimGame:
                      at=tuple(self.pos), respawn=60)
         elif first in COOK and target in ("fire", "range"):
             self.cooking = first
-            self.dialogue = {"speaker": "Cooking", "text": f"How many would you like to cook? "
-                             f"(space: all)", "more": False}
+            self.dialogue = {"speaker": "Cooking", "text": "How many would you like to cook? "
+                             "(space: all)", "more": False}
 
     def _cook_all(self) -> None:
         made, xp = COOK[self.cooking]
