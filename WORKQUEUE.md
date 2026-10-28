@@ -17,8 +17,6 @@ Rules for unattended rounds:
 Built and tested on the simulated game; screen positions and colors the real client decides
 are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
 
-- [ ] **9. Talking: `talk_to`, `choose`, `continue`.** Actions (and routine steps) to start a
-  conversation, pick an option by number or text, and click through.
 - [ ] **6. `walk_to <place>`.** Named places with coordinates; walk by clicking the minimap
   towards the target, checking position as he goes (needs a position readout: the sim's first,
   then RuneLite's coordinates overlay).
@@ -59,6 +57,9 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 ## Done
 
+- **9. Talking**: `talk_to` (Talk-to from the right-click menu; a highlight or the NPC's
+  name, found by hovering), `continue_dialogue` (space), `choose` (number or words; number
+  keys), as actions and routine steps; sim NPCs with scripts that give items and set flags.
 - **1. Dialogue reading**: the eyes notice a dialogue by its dark-red title, then the reader
   gets speaker, text, options (with where to click) and the continue line; in the sim and the
   prompt. `python -m superbond2 dialogue` for the real-client check.

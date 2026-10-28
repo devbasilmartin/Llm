@@ -270,6 +270,11 @@ the real client). His prompt shows `Dialogue: Morgan: "..." (more: press space t
 or `Dialogue: choose one: 1. ...; 2. ...`. The colors and line spacing aren't measured on the
 real client yet: `python -m superbond2 dialogue` reads one and saves the chatbox.
 
+He talks with `talk_to` (a highlight name, or the person's name, found by hovering the
+highlights), `continue_dialogue` (space) and `choose` (an option's number or words; the
+number keys). All three work as routine steps too. In the sim, NPCs have scripts that can
+give items and set quest flags.
+
 ### Discord
 
 He posts highlights and a daily summary to a private channel, and you can answer, `veto`

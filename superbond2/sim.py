@@ -46,6 +46,9 @@ class Thing:
     label: str = ""              # its name in the game ("Oak tree")
     verb: str = ""               # its left-click option ("Chop down")
     marked: bool = True          # outlined (marked by the owner, or by him); unmarked ones aren't
+    # npc: what they say. {node: [step, ...]}, starting at "start". A step is
+    # ("say", who, text), ("choose", [(option, node), ...]), ("give", item) or ("flag", name).
+    talk: dict | None = None
 
     def here(self, t: float) -> bool:
         return t >= self.gone_until
@@ -56,7 +59,7 @@ LABELS = {"oak_tree": ("Oak tree", "Chop down"), "tree": ("Tree", "Chop down"),
           "willow_tree": ("Willow tree", "Chop down"), "rock": ("Copper rocks", "Mine"),
           "cow": ("Cow", "Attack"), "enemy": ("Goblin", "Attack"), "bank": ("Bank booth", "Bank"),
           "other_player": ("Zezima", "Follow"), "loot": ("Cowhide", "Take")}
-HOVER_KIND = {"gather": "object", "bank": "object", "static": "object", "monster": "npc",
+HOVER_KIND = {"gather": "object", "bank": "object", "static": "object", "monster": "npc", "npc": "npc",
               "loot": "item", "player": "player"}
 
 
@@ -88,6 +91,8 @@ class SimGame:
         self.bank_open = False               # clicking a booth opens it, like the real game
         # a dialogue in the chatbox: {"speaker", "text", "options", "more"}, or None
         self.dialogue: dict | None = None
+        self.convo: tuple[Thing, str, int] | None = None   # who, which node, which step
+        self.flags: set[str] = set()                        # what conversations have set
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
     # --- setting up a scene ---------------------------------------------------------------
@@ -147,6 +152,8 @@ class SimGame:
                     self.screen, self.player_name = "welcome", user
                 self._fields, self._field = ["", ""], None
             return
+        if self.convo is not None and k != "esc":
+            return self._dialogue_key(k)
         if k == "esc":
             self.doing, self.bank_open = None, False
 
@@ -191,6 +198,35 @@ class SimGame:
     # --- dialogue -------------------------------------------------------------------------
     PARCHMENT = (194, 178, 145)          # the chatbox's background while someone talks
     LINE = 16                            # pixels per line of dialogue text
+
+    def _talk(self, thing: Thing, node: str, i: int) -> None:
+        """Run the conversation from (node, i): effects happen on the way, and it stops at the
+        next thing to say or choose (or ends)."""
+        steps = thing.talk.get(node, [])
+        while i < len(steps):
+            step = steps[i]
+            if step[0] == "give":
+                self._put(step[1])
+            elif step[0] == "flag":
+                self.flags.add(step[1])
+            elif step[0] == "say":
+                self.convo = (thing, node, i)
+                self.dialogue = {"speaker": step[1], "text": step[2], "more": True}
+                return
+            elif step[0] == "choose":
+                self.convo = (thing, node, i)
+                self.dialogue = {"options": [o for o, _ in step[1]]}
+                return
+            i += 1
+        self.convo, self.dialogue = None, None
+
+    def _dialogue_key(self, k: str) -> None:
+        thing, node, i = self.convo
+        step = thing.talk[node][i]
+        if step[0] == "say" and k == "space":
+            self._talk(thing, node, i + 1)
+        elif step[0] == "choose" and k.isdigit() and 1 <= int(k) <= len(step[1]):
+            self._talk(thing, step[1][int(k) - 1][1], 0)
 
     def _dialogue_lines(self) -> list[str]:
         d = self.dialogue
@@ -287,6 +323,9 @@ class SimGame:
     def _click_thing(self, thing: Thing) -> None:
         if thing.kind == "bank":
             self.doing, self.bank_open = None, True
+        elif thing.kind == "npc" and thing.talk:
+            self.doing = None
+            self._talk(thing, "start", 0)
         elif thing.kind == "loot":
             if self._put(thing.gives):
                 self.things.remove(thing)

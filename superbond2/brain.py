@@ -60,6 +60,8 @@ highlights nearby and your inventory. Start from what's in front of you.
 - You only see what's highlighted. survey hovers over the whole view and reads what's
   there, highlighted or not: that's how you find new things in a new place. mark outlines an
   object you found, for good (it shows as `marked`). inspect reads what a highlight really is.
+- talk_to someone, continue_dialogue to hear the rest, choose an option: that's how quests
+  start and move on. What they say shows under Now, as Dialogue.
 - search_wiki and read_wiki look things up on the OSRS Wiki: what something is, where to
   find it, what a quest needs (read its Details section). The page you read stays in view
   for a few turns; note what you'll want to remember.

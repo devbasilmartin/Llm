@@ -270,6 +270,70 @@ class Actions:
                                      if held else "")
         return self._after(before, did)
 
+    # --- talking ------------------------------------------------------------------------------
+    def _said(self) -> str:
+        d = self.view.dialogue
+        if d is None:
+            return "nobody's talking now"
+        if d.options:
+            return "choose one: " + "; ".join(f"{i}. {t}" for i, (t, _) in enumerate(d.options, 1))
+        return f'{d.speaker}: "{d.text}"' + (" (more)" if d.more else "")
+
+    def talk_to(self, name: str) -> Result:
+        """Talk to someone: a highlight name (quest_dialog, aubury...) or their name in the
+        game (Morgan), if they're highlighted."""
+        now = self.look()
+        target = now.nearest(as_name(name))
+        if target is None:                               # their game name: hover to find them
+            for h in sorted(now.highlights, key=lambda h: h.distance):
+                hover = self.body.read_hover(h.center)
+                if hover is not None and hover.kind == "npc" and hover.name.lower() == str(name).strip().lower():
+                    target = h
+                    break
+        if target is None:
+            seen = sorted({h.name for h in now.highlights})
+            return Result(False, f"no {name} in sight (I can see: {', '.join(seen) or 'nothing'})")
+        rows = self.body.open_menu(target.center)
+        row = next(((t, at) for t, at in rows if t.lower().startswith("talk-to")), None)
+        if row is None:
+            self.body.close_menu()
+            return Result(False, f"{name} has nothing to say (the menu: {', '.join(t for t, _ in rows)})")
+        self.body.click(row[1])
+        for _ in range(10):                              # walking over, then the chat
+            self.body.wait(0.6)
+            if self.look().dialogue_open:
+                break
+        else:
+            return Result(False, f"clicked Talk-to {name}, but nobody spoke")
+        return Result(True, f"talking to {name}: {self._said()}")
+
+    def continue_dialogue(self, _: str = "") -> Result:
+        """Go on to the next thing they say (space)."""
+        if not self.look().dialogue_open:
+            return Result(False, "nobody's talking")
+        self.body.key("space")
+        self.body.wait(0.6)
+        self.look()
+        return Result(True, f"next: {self._said()}")
+
+    def choose(self, option: str) -> Result:
+        """Pick a dialogue option, by its number (1-5) or its words."""
+        d = self.look().dialogue
+        if d is None or not d.options:
+            return Result(False, "there's no choice to make right now")
+        texts = [t for t, _ in d.options]
+        want = str(option).strip()
+        n = int(want) if want.isdigit() else next(
+            (i + 1 for i, t in enumerate(texts) if t.lower() == want.lower()), None) or next(
+            (i + 1 for i, t in enumerate(texts) if want.lower() in t.lower()), None)
+        if n is None or not 1 <= n <= len(texts):
+            return Result(False, f"no option {option!r}; the options: " +
+                          "; ".join(f"{i}. {t}" for i, t in enumerate(texts, 1)))
+        self.body.key(str(n))
+        self.body.wait(0.6)
+        self.look()
+        return Result(True, f"chose {n}. {texts[n - 1]}; now {self._said()}")
+
     def walk_away(self) -> Result:
         """Run from the nearest monster: click open ground on the far side of the view.
         For the flee reflex; not one of his tools."""
@@ -336,6 +400,11 @@ ACTIONS = [
     _spec("inspect", Actions.inspect.__doc__, name="A highlight name, e.g. rock, enemy, marked."),
     _spec("mark", Actions.mark.__doc__, name="A name from your last survey, e.g. Willow tree."),
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
+    _spec("talk_to", Actions.talk_to.__doc__, name="A highlight name or the person's name, e.g. Morgan."),
+    {"type": "function", "function": {
+        "name": "continue_dialogue", "description": Actions.continue_dialogue.__doc__,
+        "parameters": {"type": "object", "required": [], "properties": {}}}},
+    _spec("choose", Actions.choose.__doc__, option="The option's number (1-5) or its words."),
     {"type": "function", "function": {
         "name": "bank", "description": Actions.bank.__doc__,
         "parameters": {"type": "object", "required": [], "properties": {
