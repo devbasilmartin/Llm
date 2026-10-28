@@ -19,8 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **22. Random events.** Recognise a random event NPC (its highlight or dialogue) and
-  dismiss it.
 - [ ] **21. Memory sleep.** Now and then the thoughtful brain boils old notes down into lessons
   so the notebook stays short.
 - [ ] **11. Quest points and the quest log.** Read them, track them toward Dragon Slayer's 32.
@@ -47,11 +45,15 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   "Remove <item>", and a screenshot of the tab (it shows no name) to place the slots.
 - A shop open (a general store): a screenshot of the shop window, to place its item grid and
   check its color; and that hovering an item says "Value <item>".
+- When a random event turns up: does it get the `random_event` highlight (skillbot's profile),
+  and does its menu say "Dismiss"?
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **22. Random events**: a reflex dismisses anything highlighted `random_event` (Dismiss from
+  its menu), between turns and mid-routine, and tells him; the routine carries on.
 - **23. Stuck detector**: the screen's signature (place, inventory, highlights, HP, dialogue)
   unchanged for 8 turns hands over to the thoughtful brain and posts ⚠️ once (again at 16).
 - **18. Discord reactions**: goal posts come with a 👎 to tap (a veto), questions with 👍 / 👎

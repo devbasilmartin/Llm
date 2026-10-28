@@ -332,3 +332,33 @@ def test_anything_changing_isnt_stuck(game, memory):
         game.pos[0] += 1                                             # walking along
         b.turn()
     assert not any("stuck" in m for m in told)
+
+
+# --- random events ------------------------------------------------------------------------------
+def pester(game):
+    return game.add("random_event", "npc", 260, 160, 14, 30, label="Drunken Dwarf", verb="Talk-to",
+                    options=("Dismiss",))
+
+
+def test_a_random_event_is_dismissed_by_reflex(game, memory):
+    dwarf = pester(game)
+    fast = Scripted(WAIT)
+    b = two(game, memory, fast, Scripted())
+    b.turn()
+    assert not dwarf.here(game.t)
+    assert "reflex: a random event turned up: chose Dismiss Drunken Dwarf" in fast.prompts[0]
+
+
+def test_one_turning_up_mid_routine_doesnt_stop_it(game, memory):
+    from superbond2.routines import Routine, Runner, simple_routine
+    b = two(game, memory, Scripted(), Scripted())
+    calls = []
+
+    def guard(view):
+        if len(calls) == 2:
+            pester(game)
+        calls.append(1)
+        return b.reflexes(view)
+    r = Runner(b.actions, guard=guard).run(Routine.from_dict(simple_routine(
+        "chop", "x", ["click_nearest oak_tree if idle and see oak_tree", "wait 2"], times=4)))
+    assert r.ok and not any(t.label == "Drunken Dwarf" and t.here(game.t) for t in game.things)

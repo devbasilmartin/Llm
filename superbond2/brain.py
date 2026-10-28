@@ -323,6 +323,11 @@ class Reflexes:
     def __call__(self, view: View) -> str | None:
         if len(self.actions.deaths) > self.deaths_seen:
             return "you died"               # nothing left of the plan the routine was for
+        if view.nearest("random_event") is not None:     # someone popping up to pester him
+            r = self.actions.interact("random_event", "Dismiss")
+            did = r.said if r.ok else "couldn't dismiss it: " + r.said
+            self.last = f"reflex: a random event turned up: {did}"
+            view = self.actions.view
         r = self.memory.reflexes()
         if view.hp is None:
             return None

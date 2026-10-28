@@ -358,6 +358,8 @@ class SimGame:
             self.pos[2] += 1
         elif option == "Climb-down":
             self.pos[2] = max(0, self.pos[2] - 1)
+        elif option == "Dismiss":
+            thing.gone_until = 1e12
         elif option == "Search" and thing.gives and thing.hp == 0:
             if self._put(thing.gives):
                 thing.hp = 1                                # searched: found it once
