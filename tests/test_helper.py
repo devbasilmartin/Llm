@@ -352,3 +352,22 @@ def test_he_beats_while_he_looks(tmp_path):
         assert heartbeat.age(heartbeat.FILE, __import__("time").time()) < 5
     finally:
         heartbeat.FILE = None
+
+
+
+def test_bakeoff_options(repo):
+    popen = Popen(FakeProc(["boom\n"], code=1))
+    h, d = helper(repo, popen)
+    h.handle("!bakeoff granite4.1:3b qwen3:4b --think off --only d1 D3 i2")
+    wait_for_job(h)
+    assert popen.cmds[0][1:] == ["bench/bakeoff.py", "--host", "http://10.0.2.2:11434",
+                                 "--models", "granite4.1:3b", "qwen3:4b",
+                                 "--think", "off", "--only", "d1", "d3", "i2"]
+    for bad, says in (("!bakeoff --think maybe", "`--think` takes"),
+                      ("!bakeoff --only", "`--only` takes scenario ids"),
+                      ("!bakeoff --only d1 ;rm", "(not: ;rm)"),
+                      ("!bakeoff --models x", "I don't know `--models`"),
+                      ("!bakeoff gemma4:12b;ls", "Not a model name")):
+        h.handle(bad)
+        assert says in d.posted[-1], bad
+    assert len(popen.cmds) == 1

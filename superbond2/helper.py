@@ -4,7 +4,8 @@ the project can be looked after from a phone.
     !status             is he playing, what's running, Ollama, the code version, disk space
     !models             the models Ollama has
     !pull gemma4:12b    download a model (progress as it goes)
-    !bakeoff [models]   run the bake-off; the results come back as a file
+    !bakeoff [models] [--think off] [--only d1 d3 i2]
+                        run the bake-off; the results come back as a file
     !update             get the newest code (and restart the helper if it changed)
     !tests              run the tests
     !play MODEL [CHARACTER] [MINUTES]    let superbond2 play (MODEL+FAST: a fast one too)
@@ -39,6 +40,8 @@ from .discord import Discord, DiscordError
 REPO = Path(__file__).resolve().parent.parent
 BRANCH = "bench-bakeoff"
 MODEL = re.compile(r"^[a-z0-9][a-z0-9._-]*(/[a-z0-9._-]+)?(:[a-z0-9._-]+)?$")
+SCENARIO = re.compile(r"^[a-z]\d{1,2}$")
+THINK = ("auto", "on", "off", "low", "medium", "high")
 CHARACTER = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 HELP = __doc__.split("\n\n")[1]
 HUNG = 15 * 60                  # no heartbeat this long while playing: hung (a thoughtful
@@ -200,16 +203,42 @@ class Helper:
         self.say(f"✅ {model} is ready." if last == "success" else
                  f"⚠️ {model}: the download ended at '{last}'. `!pull {model}` again resumes it.")
 
-    def do_bakeoff(self, *models: str) -> None:
-        bad = [m for m in models if not MODEL.match(m)]
-        if bad:
-            return self.say(f"Not model names: {', '.join(bad)}")
-        self._start("the bake-off", self._bakeoff, list(models))
+    def do_bakeoff(self, *words: str) -> None:
+        models, extra, i = [], [], 0
+        while i < len(words):
+            w = words[i]
+            if w == "--think":
+                value = words[i + 1].lower() if i + 1 < len(words) else ""
+                if value not in THINK:
+                    return self.say(f"`--think` takes {', '.join(THINK)}.")
+                extra += ["--think", value]
+                i += 2
+            elif w == "--only":
+                ids = []
+                i += 1
+                while i < len(words) and not words[i].startswith("--"):
+                    ids.append(words[i].lower())
+                    i += 1
+                bad = [x for x in ids if not SCENARIO.match(x)]
+                if not ids or bad:
+                    return self.say("`--only` takes scenario ids like d1 d3 j1 i2" +
+                                    (f" (not: {', '.join(bad)})" if bad else "") + ".")
+                extra += ["--only", *ids]
+            elif w.startswith("--"):
+                return self.say(f"I don't know `{w}`. `!bakeoff` takes models, `--think off` and "
+                                "`--only d1 d3`.")
+            elif MODEL.match(w):
+                models.append(w)
+                i += 1
+            else:
+                return self.say(f"Not a model name: {w}")
+        self._start("the bake-off", self._bakeoff, models, extra)
 
-    def _bakeoff(self, models: list[str]) -> None:
+    def _bakeoff(self, models: list[str], extra: list[str] = ()) -> None:
         cmd = [sys.executable, "bench/bakeoff.py", "--host", self.host]
         if models:
             cmd += ["--models", *models]
+        cmd += list(extra)
         self.say("🏁 Bake-off started. On this CPU it takes a while; I'll post as each model goes.")
         done = [0]
 

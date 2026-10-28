@@ -14,8 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **`!bakeoff` options.** `!bakeoff --think off --only d1 d3 ...`, checked like the other
-  arguments. Done when: tested.
 - [ ] **Keep food out of the bank.** Banking deposits everything that isn't a tool, so he
   banks his trout and the eat reflex has nothing. Banking keeps his reflex food (or the
   routine can say what to keep). Done when: the sim and tests show food staying.
@@ -43,6 +41,8 @@ Rules for unattended rounds:
 
 ## Done
 
+- **`!bakeoff` options**: `--think` (auto/on/off/low/medium/high) and `--only` with scenario
+  ids, checked like models; anything else is refused with what it takes.
 - **Background thinking** (see the commit after 58043a4): starts with routines that have taken
   90 s or more, 2 turns after a thoughtful one, and stands in for the every-15-turns step back;
   the next turn waits for it rather than run two models at once. A real-model sim run showed

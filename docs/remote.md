@@ -40,7 +40,7 @@ restarts or you start it again.
 |---|---|
 | `!status` | is he playing, what's running, Ollama, which code, disk space |
 | `!models` / `!pull gemma4:12b` | what Ollama has / download a model, with progress |
-| `!bakeoff` or `!bakeoff gemma4:12b granite4.1:8b` | runs the bake-off, posts progress, and attaches the report at the end (send that to Claude) |
+| `!bakeoff`, `!bakeoff gemma4:12b granite4.1:8b`, or `!bakeoff granite4.1:3b qwen3:4b --think off --only d1 d3 i2` | runs the bake-off, posts progress, and attaches the report at the end (send that to Claude) |
 | `!update` | gets the newest code; restarts itself if its own code changed |
 | `!tests` | runs the tests |
 | `!play gemma4:12b main 90` | lets him play (model, character, minutes); `!play gemma4:12b+granite4.1:3b main 90` adds a fast model for everyday turns. The helper restarts him if he crashes, or hangs for 15 minutes (3 times an hour at most); a clean finish, `stop`, the kill switch and `!kill` aren't restarted |
