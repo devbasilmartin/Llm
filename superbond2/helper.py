@@ -33,6 +33,7 @@ import time
 import urllib.request
 from pathlib import Path
 
+from . import heartbeat
 from .discord import Discord, DiscordError
 
 REPO = Path(__file__).resolve().parent.parent
@@ -40,6 +41,9 @@ BRANCH = "bench-bakeoff"
 MODEL = re.compile(r"^[a-z0-9][a-z0-9._-]*(/[a-z0-9._-]+)?(:[a-z0-9._-]+)?$")
 CHARACTER = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 HELP = __doc__.split("\n\n")[1]
+HUNG = 15 * 60                  # no heartbeat this long while playing: hung (a thoughtful
+                                # turn on the CPU can take 6+ minutes, so not much less)
+RESTARTS = 3                    # restarts allowed in an hour before the watchdog gives up
 AUTOSTART = Path.home() / ".config" / "autostart" / "superbond2-helper.desktop"
 
 
@@ -55,6 +59,8 @@ class Helper:
         self.job: tuple[str, threading.Thread] | None = None      # one long job at a time
         self.proc: subprocess.Popen | None = None                 # the job's process, if any
         self.playing: subprocess.Popen | None = None
+        self.play: dict | None = None               # the !play the watchdog keeps going
+        self.restarts: list[float] = []             # when it restarted him
         self.restart = False
 
     # --- talking ----------------------------------------------------------------------------
@@ -76,6 +82,7 @@ class Helper:
             for text in heard:
                 if text.startswith("!"):
                     self.handle(text)
+            self.watch()
             time.sleep(every)
         self.say("🔄 Restarting with the new code...")
         os.execv(sys.executable, [sys.executable, "-m", "superbond2", "helper"])
@@ -148,6 +155,8 @@ class Helper:
         lines = []
         lines.append("🎮 superbond2 is playing." if self._playing_pid() else
                      "💤 superbond2 isn't playing.")
+        if self.play is not None and self.restarts:
+            lines.append(f"🔁 Restarted {len(self.restarts)} time(s) in the last hour.")
         if self._busy():
             lines.append(f"⚙️ Working on: {self.job[0]}.")
         try:
@@ -274,25 +283,79 @@ class Helper:
         if not minutes.isdigit() or not 1 <= int(minutes) <= 24 * 60:
             return self.say("Minutes should be a number from 1 to 1440.")
         cmd = [sys.executable, "-m", "superbond2", "play", "--model", model, "--host", self.host,
-               "--minutes", minutes, "--turns", "100000"]
+               "--turns", "100000"]
         if fast:
             cmd += ["--fast-model", fast]
         if character:
             cmd += ["--character", character]
+        self.play = {"cmd": cmd, "until": time.time() + int(minutes) * 60}
+        self.restarts = []
+        self._launch(f"play {model}{'+' + fast if fast else ''} {character} {minutes}")
+        self.say(f"🎮 Starting him on {model}{' + ' + fast if fast else ''}"
+                 f"{' as ' + character if character else ''} for {minutes} minutes. He'll post "
+                 "here himself, and I'll restart him if he crashes or hangs.")
+
+    def _launch(self, what: str, now: float | None = None) -> None:
+        now = time.time() if now is None else now
+        minutes = max(1, round((self.play["until"] - now) / 60))
         log = self.repo / "data" / "play.log"
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open("a") as f:
-            f.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M')} play {model} {character} {minutes}\n")
-        self.playing = self.popen(cmd, cwd=self.repo, stdout=log.open("a"), stderr=subprocess.STDOUT)
-        self.say(f"🎮 Starting him on {model}{' + ' + fast if fast else ''}{' as ' + character if character else ''} for "
-                 f"{minutes} minutes. He'll post here himself.")
+            f.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M')} {what}\n")
+        (self.repo / "data" / "heartbeat").touch()  # counting from now
+        self.playing = self.popen(self.play["cmd"] + ["--minutes", str(minutes)], cwd=self.repo,
+                                  stdout=log.open("a"), stderr=subprocess.STDOUT)
+
+    # --- the watchdog ---------------------------------------------------------------------------
+    def watch(self, now: float | None = None) -> None:
+        """Keep a !play going: restart him if he crashed or hung, a few times an hour at most.
+        A clean exit (time's up, `stop`, the kill switch) is left alone."""
+        if self.play is None or self.playing is None:
+            return
+        now = time.time() if now is None else now
+        code = self.playing.poll()
+        if code is None:
+            quiet = heartbeat.age(self.repo / "data" / "heartbeat", now)
+            if quiet is None or quiet < HUNG:
+                return
+            self._end(self.playing)
+            why = f"he hung (nothing for {quiet / 60:.0f} minutes)"
+        elif code == 0:
+            self.play = None                        # he finished, or was stopped on purpose
+            return
+        else:
+            why = f"he crashed (exit code {code})"
+        if self.play["until"] - now < 60:
+            self.play = None
+            return self.say(f"⚠️ {why}, right at the end of his time. Not restarting. `!log` shows why.")
+        self.restarts = [t for t in self.restarts if now - t < 3600] + [now]
+        if len(self.restarts) > RESTARTS:
+            self.play = None
+            return self.say(f"⚠️ {why} again: {RESTARTS} restarts this hour is enough, so I've "
+                            "stopped. `!log` shows what went wrong.")
+        tail = self._tail(3)
+        self._launch(f"restart: {why}", now)
+        self.say(f"🔁 {why}; restarting him (restart {len(self.restarts)} of {RESTARTS} this hour)."
+                 + (f"\n```\n{tail}\n```" if tail else ""))
+
+    def _end(self, p: subprocess.Popen) -> None:
+        p.send_signal(signal.SIGINT)
+        try:
+            p.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            p.kill()
+
+    def _tail(self, n: int) -> str:
+        log = self.repo / "data" / "play.log"
+        if not log.exists():
+            return ""
+        return "\n".join(line[:180] for line in log.read_text(errors="replace").splitlines()[-n:])
 
     def do_log(self, n: str = "15") -> None:
         log = self.repo / "data" / "play.log"
         if not log.exists():
             return self.say("No play log yet.")
-        lines = log.read_text(errors="replace").splitlines()[-max(1, min(int(n), 60)):]
-        self.say("```\n" + "\n".join(line[:180] for line in lines) + "\n```")
+        self.say("```\n" + self._tail(max(1, min(int(n), 60))) + "\n```")
 
     def do_kill(self) -> None:
         stopped = []
@@ -303,6 +366,7 @@ class Helper:
             except subprocess.TimeoutExpired:
                 self.proc.kill()
             stopped.append(self.job[0] if self.job else "the job")
+        self.play = None                            # no watchdog restart after this
         pid = self._playing_pid()
         if pid:
             os.kill(pid, signal.SIGINT)              # play's Stopped/finally: releases its lock

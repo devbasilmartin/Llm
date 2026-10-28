@@ -181,7 +181,8 @@ def test_play_log_and_kill(repo):
     popen = Popen(proc)
     h, d = helper(repo, popen)
     h.handle("!play gemma4:12b iron 90")
-    assert popen.cmds[0][-2:] == ["--character", "iron"] and "90" in popen.cmds[0]
+    cmd = popen.cmds[0]
+    assert cmd[cmd.index("--character") + 1] == "iron" and cmd[cmd.index("--minutes") + 1] == "90"
     assert d.posted[-1].startswith("🎮 Starting him on gemma4:12b as iron for 90 minutes")
     h.handle("!play gemma4:12b")
     assert d.posted[-1].startswith("He's already playing")
@@ -265,3 +266,89 @@ def test_play_with_a_fast_model_too(repo):
     h.playing.running = False
     h.handle("!play gemma4:12b+bad;name")
     assert d.posted[-1] == "`bad;name` doesn't look like a model name."
+
+
+
+# --- the watchdog ------------------------------------------------------------------------------
+def started(repo, *procs):
+    popen = Popen(*procs)
+    h, d = helper(repo, popen)
+    h.handle("!play gemma4:12b main 60")
+    return h, d, popen
+
+
+def test_a_crash_gets_a_restart_for_the_time_left(repo):
+    import time
+    first, second = FakeProc(), FakeProc()
+    h, d, popen = started(repo, first, second)
+    first.running, first.code = False, 1
+    (repo / "data" / "play.log").write_text("[12] wait -> ok\nTraceback (most recent call last):\nKeyError: 'x'\n")
+    h.watch(now=time.time() + 20 * 60)
+    assert len(popen.cmds) == 2 and h.playing is second
+    cmd = popen.cmds[1]
+    assert cmd[cmd.index("--minutes") + 1] == "40"                  # what's left of the hour
+    assert d.posted[-1].startswith("🔁 he crashed (exit code 1); restarting him (restart 1 of 3")
+    assert "KeyError: 'x'" in d.posted[-1]
+    h.watch()                                                       # running fine: nothing
+    assert len(popen.cmds) == 2
+
+
+def test_a_hang_is_ended_and_restarted(repo):
+    import os
+    import time
+    first, second = FakeProc(), FakeProc()
+    h, d, popen = started(repo, first, second)
+    beat = repo / "data" / "heartbeat"
+    h.watch(now=time.time() + 60)
+    assert len(popen.cmds) == 1                                     # a slow turn isn't a hang
+    old = time.time() - 16 * 60
+    os.utime(beat, (old, old))
+    h.watch()
+    assert first.signals and h.playing is second
+    assert d.posted[-1].startswith("🔁 he hung (nothing for 16 minutes)")
+
+
+def test_a_clean_finish_is_left_alone(repo):
+    proc = FakeProc()
+    h, d, popen = started(repo, proc)
+    proc.running, proc.code = False, 0
+    h.watch()
+    assert len(popen.cmds) == 1 and h.play is None
+
+
+def test_it_gives_up_after_three_restarts_in_an_hour(repo):
+    import time
+    procs = [FakeProc() for _ in range(5)]
+    h, d, popen = started(repo, *procs)
+    now = time.time()
+    for i in range(4):
+        h.playing.running, h.playing.code = False, 1
+        h.watch(now=now + i * 60)
+    assert len(popen.cmds) == 4 and h.play is None
+    assert "3 restarts this hour is enough" in d.posted[-1]
+
+
+def test_kill_means_no_restart(repo, monkeypatch):
+    import os
+    proc = FakeProc()
+    h, d, popen = started(repo, proc)
+    monkeypatch.setattr(os, "kill", lambda pid, sig: None)
+    monkeypatch.setattr(h, "_playing_pid", lambda: 4242)
+    h.handle("!kill")
+    proc.running, proc.code = False, 1
+    h.watch()
+    assert len(popen.cmds) == 1
+
+
+def test_he_beats_while_he_looks(tmp_path):
+    from superbond2 import heartbeat
+    from superbond2.actions import Actions
+    from superbond2.eyes import Eyes
+    from superbond2.hands import SimBody
+    from superbond2.sim import lumbridge
+    heartbeat.FILE = tmp_path / "heartbeat"
+    try:
+        Actions(SimBody(lumbridge()), Eyes())
+        assert heartbeat.age(heartbeat.FILE, __import__("time").time()) < 5
+    finally:
+        heartbeat.FILE = None

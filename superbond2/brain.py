@@ -20,6 +20,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
+from . import heartbeat
 from .actions import ACTIONS, Actions, Result, do
 from .eyes import View, describe
 from .memory import Memory
@@ -744,6 +745,7 @@ class Brain:
         for _ in range(turns):
             self.listen()
             while self.paused and not self.stopped and time.monotonic() < deadline:
+                heartbeat.beat()                    # paused isn't hung
                 sleep(5)
                 self.listen()
             if self.stopped:

@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
+from . import heartbeat
 from .eyes import Eyes, View
 from .hands import KEYS, Body
 from .layout import SLOTS
@@ -67,6 +68,7 @@ class Actions:
         """A fresh View, from two pictures a moment apart: if the character moved between
         them, he's busy. Comparing with an older look could land on the same frame of a
         repeating animation (a swing every few ticks) and call a busy character idle."""
+        heartbeat.beat()
         first = self.body.grab()
         self.body.wait(GLANCE)
         self.view = self.eyes.look(self.body.grab(), before=first)

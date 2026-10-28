@@ -155,6 +155,8 @@ def play(args) -> int:
         except DiscordError as e:
             print(f"Discord is off: {e}")
     lock = DATA / "playing.lock"
+    from . import heartbeat
+    heartbeat.FILE = DATA / "heartbeat"             # for the helper's watchdog
     try:
         if not args.sim:
             claim(lock)
