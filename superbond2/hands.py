@@ -55,6 +55,9 @@ class SimBody:
     def read_equipment(self):
         return self.game.read_equipment()
 
+    def read_quests(self):
+        return self.game.read_quests()
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -153,6 +156,18 @@ class RealBody:
         time.sleep(0.6)
         try:
             return self.reader.levels(self.screen.grab())
+        finally:
+            self.click(tabs["inventory"])
+            time.sleep(0.3)
+
+    def read_quests(self):
+        """Open the Quest tab, read the points and the quests in view, go back."""
+        from .layout import Layout
+        tabs = Layout().tabs
+        self.click(tabs["quest"])
+        time.sleep(0.6)
+        try:
+            return self.reader.quests(self.screen.grab())
         finally:
             self.click(tabs["inventory"])
             time.sleep(0.3)

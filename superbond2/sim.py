@@ -583,6 +583,12 @@ class SimGame:
         self.inventory[i] = self.equipment.get(where)       # what was worn goes in the bag
         self.equipment[where] = item
 
+    def read_quests(self) -> dict:
+        """Quests by their flags: "<quest> started" and "<quest> done"."""
+        done = sorted(f[:-5] for f in self.flags if f.endswith(" done"))
+        started = sorted(f[:-8] for f in self.flags if f.endswith(" started") and f[:-8] not in done)
+        return {"points": self.quest_points, "done": done, "started": started}
+
     def read_equipment(self) -> dict[str, str]:
         return dict(self.equipment)
 

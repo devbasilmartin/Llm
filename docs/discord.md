@@ -9,6 +9,7 @@ He posts to one channel on your own private server:
 - switching accounts
 - 💀 deaths, and what he lost
 - 🎉 level-ups
+- 🏆 quests finished
 - ⚠️ problems
 - why he stopped
 - 📅 a daily summary

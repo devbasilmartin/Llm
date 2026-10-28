@@ -191,7 +191,7 @@ class Discord:
 def daily_summary(memory: Memory, day: str) -> str:
     """One post about a day of play (`day` is YYYY-MM-DD), from his decision log, firsts and
     journal."""
-    turns, deaths, ups = [], [], []
+    turns, deaths, ups, quests = [], [], [], []
     if memory.decisions_file.exists():
         for line in memory.decisions_file.read_text().splitlines():
             try:
@@ -201,6 +201,8 @@ def daily_summary(memory: Memory, day: str) -> str:
             if str(rec.get("at", "")).startswith(day):
                 if rec.get("event") == "level":
                     ups.append(rec)
+                elif rec.get("event") == "quest":
+                    quests.append(rec)
                 else:
                     (deaths if rec.get("event") == "death" else turns).append(rec)
     if not turns:
@@ -225,6 +227,9 @@ def daily_summary(memory: Memory, day: str) -> str:
             first, _ = gained.setdefault(u["skill"], [u["from"], u["to"]])
             gained[u["skill"]] = [first, u["to"]]
         lines.append("🎉 Levels: " + ", ".join(f"{k} {a} → {b}" for k, (a, b) in gained.items()) + ".")
+    if quests:
+        lines.append("🏆 Quests: " + ", ".join(q["quest"] for q in quests) +
+                     f" ({quests[-1]['points']} quest points).")
     if deaths:
         lines.append(f"💀 Died {len(deaths)} time{'s' if len(deaths) > 1 else ''}.")
     if new:

@@ -151,6 +151,34 @@ class Reader:
             out[skill] = int(m[1])
         return out
 
+    QUEST_COLORS = {"done": (0, 255, 0), "started": (255, 255, 0), "not started": (255, 0, 0)}
+
+    def quests(self, img: np.ndarray) -> dict | None:
+        """From the open Quest tab: the quest points, and the quests in view by state."""
+        import re
+        m = re.search(r"(\d+)", self.read_ink(img, self.layout.quest_points_text, (255, 152, 31), 60)
+                      or self.read_ink(img, self.layout.quest_points_text, WHITE, TEXT_TOL))
+        if not m:
+            return None
+        out = {"points": int(m[1]), "done": [], "started": []}
+        box = self.layout.quest_list
+        for state, rgb in self.QUEST_COLORS.items():
+            if state == "not started":
+                continue
+            rows = _mask(box.crop(img), rgb, 30).any(axis=1)
+            y = 0
+            while y < len(rows):
+                if rows[y]:
+                    end = y
+                    while end < len(rows) and rows[end]:
+                        end += 1
+                    name = self.read_ink(img, Rect(box.x, box.y + y - 1, box.w, end - y + 2), rgb, 30)
+                    if name:
+                        out[state].append(name)
+                    y = end
+                y += 1
+        return out
+
     def hover(self, img: np.ndarray) -> Hover | None:
         """What the mouse is over, or None for nothing (Walk here)."""
         text, kind = self.read(img, self.layout.hover_text)

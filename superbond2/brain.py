@@ -449,6 +449,8 @@ class Brain:
         if m.levels():
             lines += ["", levels.line(m.levels())]
         lines.append(f"Wearing: {self.actions._worn()}")
+        if self.quest_line():
+            lines.append(self.quest_line())
         lines += ["", "Your routines:", routines, "",
                   (f"Reflexes: you eat {', '.join(r['food'])} automatically below {r['eat_below']}% HP"
                    if r["eat_below"] else "Reflexes: you don't eat automatically") +
@@ -560,6 +562,7 @@ class Brain:
         if self.turns - self.levels_read >= LEVELS_EVERY:
             self.check_levels()
             self.actions.read_wearing()
+            self.check_quests()
         stop = self.reflexes(view)
         if self.reflexes.last:
             self.recent.append(f"{self.turns}. {self.reflexes.last}")
@@ -670,6 +673,7 @@ class Brain:
                 m.routines.record(routine, run, time.monotonic() - started)
                 self.mourn()
                 self.check_levels()
+                self.check_quests()
                 return Result(run.ok, run.said)
             if name == "save_routine":
                 if "routine" in args:                    # the YAML form, for longer routines
@@ -813,6 +817,36 @@ class Brain:
             self.recent.append(f"{self.turns}. nothing has changed for {same} turns")
             where = f" at {view.position[0]}, {view.position[1]}" if view.position else ""
             self.owner.tell(f"⚠️ I think I'm stuck{where}: nothing has changed for {same} turns.")
+
+    def check_quests(self) -> None:
+        """Read the Quest tab, and celebrate quests finished since the last read."""
+        read = getattr(self.actions.body, "read_quests", None)
+        try:
+            now = read() if read else None
+        except RuntimeError:
+            now = None
+        if not now:
+            return
+        before = self.memory.quests()
+        for quest in now["done"]:
+            if before and quest not in before.get("done", []):
+                self.recent.append(f"{self.turns}. 🏆 quest complete: {quest}! "
+                                   f"{now['points']} quest points now")
+                self.owner.tell(f"🏆 Quest complete: {quest}! {before.get('points', 0)} → "
+                                f"{now['points']} quest points.")
+                self.memory.log({"event": "quest", "quest": quest, "points": now["points"]})
+        self.memory.set_quests(now)
+
+    def quest_line(self) -> str | None:
+        q = self.memory.quests()
+        if not q:
+            return None
+        line = f"Quest points: {q['points']} (Dragon Slayer needs 32)"
+        if q.get("done"):
+            line += "; done: " + ", ".join(q["done"])
+        if q.get("started"):
+            line += "; started: " + ", ".join(q["started"])
+        return line
 
     def check_levels(self) -> None:
         """Read the levels (the Skills tab), and celebrate what went up."""

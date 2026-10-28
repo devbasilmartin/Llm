@@ -62,6 +62,9 @@ class Layout:
     shop_step: tuple[int, int] = (47, 47)
     shop_cols: int = 8
     shop_rows: int = 5
+    # the Quest tab: "Quest Points: 12" at the top, then the list, colored by state (a guess)
+    quest_points_text: Rect = Rect(553, 210, 180, 16)
+    quest_list: Rect = Rect(553, 230, 170, 230)
     # the Equipment tab's slots (a guess until measured)
     equipment_slots: dict = field(default_factory=lambda: {
         "head": (641, 219), "cape": (600, 258), "neck": (641, 258), "ammo": (682, 258),

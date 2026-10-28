@@ -19,7 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **11. Quest points and the quest log.** Read them, track them toward Dragon Slayer's 32.
 - [ ] **10. Quest Helper.** Read its step text and follow its `quest_target` highlights.
 - [ ] **16. The Grand Exchange.** Buy and sell with wiki prices and guard rails (no selling
   far under price, no buying far over).
@@ -45,11 +44,16 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   check its color; and that hovering an item says "Value <item>".
 - When a random event turns up: does it get the `random_event` highlight (skillbot's profile),
   and does its menu say "Dismiss"?
+- The Quest tab open: a screenshot of it (no name shows), to place the quest-points line and
+  the list, and check the colors (red, yellow, green). Long lists scroll: only what's in view is read.
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **11. Quest points and the quest log**: read from the Quest tab with the levels; a Quest
+  points line (with Dragon Slayer's 32) in his prompt; a finished quest is told, posted 🏆,
+  logged and in the daily summary.
 - **21. Memory sleep**: at 60 notes the thoughtful brain gets a turn to boil the older ones
   (not the offer, not the newest 10) into at most 20 lessons; the old notes go to
   notebook-archive.md, and the owner gets a 🛌 line.
