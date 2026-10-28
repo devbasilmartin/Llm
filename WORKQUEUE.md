@@ -14,9 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Watchdog.** The helper supervises a `!play` it started: if the play process dies, or
-  he makes no turn for 10 minutes, it restarts him (at most 3 times an hour) and says so on
-  Discord. Done when: tests cover a crash, a hang and the restart limit.
 - [ ] **Background thinking that actually runs.** In the first two-brain run it never fired
   (slow turns kept landing too close to routine starts). Rethink when it starts, so a long
   routine gets the big model thinking. Done when: a sim run with real models shows it, and
@@ -50,4 +47,7 @@ Rules for unattended rounds:
 
 ## Done
 
-(Items move here with a line on what was done and the commit.)
+- **Watchdog** (62bfa3d): the helper restarts a `!play` after a crash or 15 minutes without a
+  heartbeat (not 10: a thoughtful turn can take 6+ minutes), 3 times an hour at most; clean
+  exits are left alone. Also restored ROADMAP.md, whose to-dos and build order an earlier
+  edit of mine had cut off.

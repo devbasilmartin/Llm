@@ -26,3 +26,73 @@ bottom.
 | 9 | **What success means, in order:** (1) a companion you check on from your phone, (2) beating Dragon Slayer, (3) learning how LLMs work. | Dragon Slayer takes hundreds of hours of play, which only happens if he runs unattended and reports in. Dragon Slayer then decides which abilities come next. Learning comes from small doses of the GPT track and from explanations of each part as it's built. |
 | 10 | **About 1-2 hours a week at the PC, CPU only, no hardware spending.** | He has to need you rarely: things that need the PC are batched into one short checklist, and everything is tested on the simulated game first. Speed comes from routines (the model decides only at real choice points), not hardware. |
 | 11 | **Discord, two-way, through a bot.** He posts highlights (goals, questions, firsts, level-ups, deaths, journal entries, problems he can't fix) and a daily summary. You can answer, veto a goal, pause or stop him, and message him anytime: your messages reach him as advice, and his goals stay his choice. | It's how you look after him away from the PC. Only your own Discord account in a private channel is listened to, so other people can't steer him. The bot token lives in a private file on the VM, like the logins. |
+
+## Owner to-dos
+
+- [ ] Set up Discord: a private server and channel, the bot, and `discord.env` on the VM ([docs/discord.md](docs/discord.md)); the token never goes in a chat.
+- [ ] Start the Discord helper with the VM's desktop (`python -m superbond2 helper --autostart`), and Claude Remote Control on Windows ([docs/remote.md](docs/remote.md)).
+- [ ] Send the quick bake-off results (`--think off`, granite4.1:3b, qwen3:4b, gemma4:12b) to pick the fast brain.
+- [ ] Confirm gemma4:12b as the thoughtful brain.
+- [ ] Save each Bolt character's session (`python -m superbond2 save-session NAME`) and write a line about each in `data/memory/accounts.yaml`.
+- [ ] Try the eyes and hands on the VM ([superbond2/README.md](superbond2/README.md)) and send the output and look.png.
+- [x] Check the server's rules on bots: allowed everywhere, PvP and the GE included.
+- [x] Install Ollama on Windows and pull the bake-off models.
+- [x] Run the bake-off at home: gemma4:12b 13/21 (best, and safest on injections, but about 2.5 minutes an answer), gpt-oss:20b 9/21, granite4.1:8b 3/21 (both did what injected messages told them).
+
+## Build order
+
+### Phase 0: pick the brain
+- [x] Bake-off: 21 scenarios (decide, judgment, plan, inject), graded and timed through Ollama
+- [x] Run it on the PC: gemma4:12b leads (see the owner to-dos)
+- [ ] The quick bake-off for the fast brain, and the pair chosen
+
+### Phase 1: superbond2 v0
+- [x] Eyes: find the canvas on the desktop, highlights by name, inventory tags, HP, busy/idle, in game or not ([superbond2/](superbond2/))
+- [ ] Eyes, checked on the real client (`python -m superbond2 look`): boxes, HP, busy while chopping
+- [x] Hands: mouse and keyboard in the VM (pyautogui) or the simulated game; kill switch (mouse in a corner); keys limited to space, esc, enter, 1-5
+- [x] Actions: click the nearest highlight, click an item or slot, drop all, press, wait, wait until idle; each reports what changed
+- [ ] Hands, checked on the real client (`python -m superbond2 do ...`)
+- [x] Routines: YAML with repeat/if/stop and screen conditions, checked with messages that say what to fix, run with limits, saved in a library that keeps score
+- [ ] Banking on the real client: the eyes read the bank screen, actions deposit and withdraw
+- [x] Brain loop: state → model → one tool call, with the notebook, goals, journal, decision log and his routines; limits on goal churn, repeated questions and repeating what does nothing
+- [x] Survival reflexes: eat below his threshold, in code, before every turn and after every routine action
+- [x] Flee reflex: with no food and HP below his flee threshold, run from the fight; still dropping, log out and rest 2 minutes
+- [x] Two brains: a small fast model for everyday turns, the big one when it needs thought (no goal, stuck, asked, the owner spoke, every 15 turns) and in the background while routines play; first real run in [superbond2/README.md](superbond2/README.md)
+- [ ] More reflexes once the eyes can see them: the Wilderness level, a skulled player nearby
+- [x] First runs with real models on the simulated game (granite4.1 3b and 8b): see [superbond2/README.md](superbond2/README.md#first-runs-simulated-game-a-4-core-cloud-cpu)
+- [x] Routines he can write: a simple form (one-line steps, until, after, rounds) instead of nested YAML, and a ready `save_routine` handed to him when he does the same thing by hand three times
+- [x] Routines he writes on his own: granite4.1:8b wrote one unprompted on turn 6 and ran it 7 times without a failure
+- [x] His personality: who he is, firsts celebrated, journal reminders
+- [x] Characters: log into skillbot's profiles by name (credentials typed by code, never seen by him), logged back in after a disconnect; won't start while skillbot runs
+- [x] Launcher characters: `save-session` keeps the session Bolt gives RuneLite (private file outside the repo); logging in restarts RuneLite with it and clicks Play
+- [x] One player, several accounts: he switches himself (`switch_character`, 20 turns minimum per account); shared notebook, routines and journal, a goal per account, the owner's line about each account in accounts.yaml
+- [ ] The login screen positions, confirmed on the real client
+- [x] Exploring: survey (hover text over the whole view), mark (Object Markers, in `marked`), inspect (what a highlight really is); RuneLite guide in docs/runelite.md
+- [ ] Hover text and menu reading, tuned on the real client (`python -m superbond2 hover`)
+- [ ] New routines only run unattended once proven (experimental while you watch)
+- [x] A simulated game, drawn like RuneLite draws the real one: gathering, combat and loot, bank, food, dropping, dying
+- [ ] More eyes as needed: chat and NPC dialog, levels, minimap, open interfaces
+- [ ] On the real client: one hour of a skill he picked (the v0 milestone)
+
+### Phase 1.5: a companion you check on
+- [x] Discord bot ([docs/discord.md](docs/discord.md)): highlights and a daily summary out; answers, vetoes, pause/resume/stop and advice in, from your account only; `discord-test` checks the setup
+- [x] Daily summary: turns, accounts, turn time, routine success, firsts, new goals, a journal line
+- [x] The Discord helper: `!status`, `!models`, `!pull`, `!bakeoff` (report attached), `!update`, `!tests`, `!play`, `!log`, `!kill`; owner only, fixed jobs, starts with the VM's desktop ([docs/remote.md](docs/remote.md))
+- [x] Watchdog: the helper restarts a `!play` after a crash or 15 minutes without a heartbeat (3 times an hour at most), and says so on Discord
+- [ ] Deaths and level-ups on Discord, and XP in the daily summary
+- [ ] Claude Remote Control on Windows, reaching the VM over SSH ([docs/remote.md](docs/remote.md))
+- [ ] A full evening unattended, followed only through Discord
+
+### Phase 2 and later
+- [x] The OSRS Wiki as tools: search, and read a page or section as plain text (polite: User-Agent, 1 request/s, a week's cache); the page stays in view for 6 turns, labeled as other people's writing
+- [ ] Travel, NPC dialogs and quests (Vampire Slayer first)
+- [ ] The Grand Exchange
+- [ ] Chat, after the injection results
+- [ ] Combat and the Wilderness on his own terms; Obor; Dragon Slayer
+
+### Learning track (whenever)
+- [ ] Fetch the OSRS wiki politely and clean it into plain text
+- [ ] A readable character-level GPT: tokenizer, attention, MLP, training loop, sampling
+- [ ] Train it on the CPU; read its fake wiki pages
+
+The unattended work queue is [WORKQUEUE.md](WORKQUEUE.md).
