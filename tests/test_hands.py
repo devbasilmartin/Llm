@@ -62,8 +62,12 @@ def test_esc_stops_chopping(act, game):
 def test_bank_and_loot_reports(act, game):
     game.give("oak_logs", 3)
     act.look()
-    r = act.click_nearest("bank")
-    assert "-3 oak logs" in r.said and "-3 trout" in r.said
+    r = act.click_nearest("bank")                       # a click only opens it
+    assert act.view.bank_open and "oak logs" not in r.said
+    act.keep = {"trout"}
+    r = act.bank()
+    assert r.ok and r.said.startswith("banked oak logs (kept trout): -3 oak logs")
+    assert "trout" not in r.said.split(":", 1)[1] and not act.view.bank_open
     act.click_nearest("cow")
     r = act.wait_until_idle(timeout=300)
     assert "1 loot appeared" in r.said
@@ -83,7 +87,7 @@ def test_slots_and_waiting(act, game):
 def test_the_brain_calls_actions_by_name(act):
     assert {a["function"]["name"] for a in ACTIONS} == \
         {"click_nearest", "click_item", "click_slot", "drop_all", "press", "wait", "wait_until_idle",
-         "survey", "inspect", "mark"}
+         "survey", "inspect", "mark", "bank"}
     assert all(a["function"]["description"] for a in ACTIONS)
     assert do(act, "click_nearest", {"name": "bank"}).ok
     assert not do(act, "fly", {}).ok
@@ -188,3 +192,21 @@ def test_names_with_spaces_work_like_the_reports_say_them(act, game):
     act.look()
     assert act.drop_all("oak logs").ok
     assert act.click_nearest("Oak Tree").ok
+
+
+def test_bank_keeps_tools_food_and_what_you_ask(act, game):
+    game.give("oak_logs", 4)
+    game.give("cowhide", 2)
+    act.keep = {"trout"}
+    r = act.bank(keep="cowhide")
+    assert r.said.startswith("banked oak logs (kept cowhide, trout)")
+    assert game.bank == {"oak_logs": 4} and game.inventory.count("trout") == 3
+    assert "bronze_axe" in game.inventory or any(i in game.tools for i in game.inventory if i)
+    assert do(act, "bank", {}).said.startswith("banked cowhide (kept trout)")
+
+
+def test_no_bank_in_sight(game):
+    from superbond2.sim import SimGame
+    g = SimGame()
+    a = Actions(SimBody(g), Eyes())
+    assert a.bank().said == "no bank in sight (I can see: nothing)"

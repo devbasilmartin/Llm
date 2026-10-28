@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .colors import Registry
-from .eyes import FRAME_FILE
+from .eyes import BANK_FILL, FRAME_FILE
 from .layout import CANVAS_H, CANVAS_W, SLOTS, Layout, Rect
 
 PANEL = (62, 53, 41)             # the stone interface
@@ -85,6 +85,7 @@ class SimGame:
         self._fields, self._field = ["", ""], None
         self._tab = "inventory"
         self.menu_open: tuple[Thing | None, list] | None = None
+        self.bank_open = False               # clicking a booth opens it, like the real game
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
     # --- setting up a scene ---------------------------------------------------------------
@@ -107,6 +108,13 @@ class SimGame:
             return self._click_login(pt)
         if self.menu_open is not None:
             return self._choose(pt)
+        if self.bank_open:                  # with quantity "All": a slot banks all of that item
+            slot = self.layout.slot_at(pt)
+            item = self.inventory[slot] if slot is not None else None
+            if item is not None:
+                self.bank[item] += self.inventory.count(item)
+                self.inventory = [None if s == item else s for s in self.inventory]
+            return
         for name, at in self.layout.tabs.items():
             if abs(pt[0] - at[0]) <= 12 and abs(pt[1] - at[1]) <= 12:
                 self._tab = name
@@ -138,7 +146,7 @@ class SimGame:
                 self._fields, self._field = ["", ""], None
             return
         if k == "esc":
-            self.doing = None
+            self.doing, self.bank_open = None, False
 
     def advance(self, seconds: float) -> None:
         """Let the world run: gathering, fighting, respawns, one tick at a time."""
@@ -228,11 +236,7 @@ class SimGame:
 
     def _click_thing(self, thing: Thing) -> None:
         if thing.kind == "bank":
-            self.doing = None
-            for i, s in enumerate(self.inventory):
-                if s is not None and s not in self.tools:
-                    self.bank[s] += 1
-                    self.inventory[i] = None
+            self.doing, self.bank_open = None, True
         elif thing.kind == "loot":
             if self._put(thing.gives):
                 self.things.remove(thing)
@@ -292,10 +296,13 @@ class SimGame:
         img[pts[:, 1], pts[:, 0]] = pts[:, 2:]
         vp = self.layout.viewport
         img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = GRASS
-        for thing in self.things:
-            if thing.here(self.t):
-                self._draw_thing(img, thing)
-        self._draw_player(img)
+        if self.bank_open:                           # the bank window covers the 3D view
+            img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = BANK_FILL
+        else:
+            for thing in self.things:
+                if thing.here(self.t):
+                    self._draw_thing(img, thing)
+            self._draw_player(img)
         for i, item in enumerate(self.inventory):
             if item is not None:
                 self._draw_item(img, i, item)

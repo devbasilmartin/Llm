@@ -14,7 +14,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from . import heartbeat
-from .eyes import Eyes, View
+from .eyes import UNTAGGED, Eyes, View
 from .hands import KEYS, Body
 from .layout import SLOTS
 
@@ -62,6 +62,7 @@ def changes(before: View, after: View) -> str:
 class Actions:
     def __init__(self, body: Body, eyes: Eyes):
         self.body, self.eyes = body, eyes
+        self.keep: set[str] = set()         # never banked: his reflex food (the brain sets it)
         self.look()
 
     def look(self) -> View:
@@ -92,7 +93,10 @@ class Actions:
             seen = sorted({h.name for h in now.highlights})
             return Result(False, f"no {name} in sight (I can see: {', '.join(seen) or 'nothing'})")
         self.body.click(target.center)
-        return self._after(before, f"clicked the nearest {name}")
+        result = self._after(before, f"clicked the nearest {name}")
+        if self.view.bank_open:
+            result.said += " (the bank is open: bank puts things away, press esc closes it)"
+        return result
 
     def click_item(self, item: str) -> Result:
         """Click the first inventory slot holding `item` (eat it, bury it, use it...)."""
@@ -221,6 +225,37 @@ class Actions:
             return result
         return Result(False, f"no {key} where your survey saw it anymore; survey again")
 
+    def bank(self, keep: str = "") -> Result:
+        """Open the nearest bank and put away everything but your tools and your food (and
+        anything in `keep`), then close it. Needs the bank's quantity set to All."""
+        before, now = self.view, self.look()
+        if not now.bank_open:
+            target = now.nearest("bank")
+            if target is None:
+                seen = sorted({h.name for h in now.highlights})
+                return Result(False, f"no bank in sight (I can see: {', '.join(seen) or 'nothing'})")
+            self.body.click(target.center)
+            for _ in range(10):                      # walking there, then the window
+                self.body.wait(0.6)
+                if self.look().bank_open:
+                    break
+            else:
+                return Result(False, "clicked the bank, but it didn't open")
+        kept = {as_name(k) for k in str(keep or "").split(",") if k.strip()} | self.keep
+        banked = []
+        for i, item in enumerate(self.view.inventory):
+            if item is None or item == UNTAGGED or item in kept or item in banked:
+                continue
+            self.body.click(self.eyes.layout.slot(i).center)
+            self.body.wait(0.6)
+            banked.append(item)
+        self.body.key("esc")
+        held = sorted({i for i in self.view.inventory if i and i != UNTAGGED and i in kept})
+        did = ("banked " + ", ".join(b.replace("_", " ") for b in banked) if banked else
+               "nothing to bank") + (f" (kept {', '.join(h.replace('_', ' ') for h in held)})"
+                                     if held else "")
+        return self._after(before, did)
+
     def walk_away(self) -> Result:
         """Run from the nearest monster: click open ground on the far side of the view.
         For the flee reflex; not one of his tools."""
@@ -287,6 +322,11 @@ ACTIONS = [
     _spec("inspect", Actions.inspect.__doc__, name="A highlight name, e.g. rock, enemy, marked."),
     _spec("mark", Actions.mark.__doc__, name="A name from your last survey, e.g. Willow tree."),
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
+    {"type": "function", "function": {
+        "name": "bank", "description": Actions.bank.__doc__,
+        "parameters": {"type": "object", "required": [], "properties": {
+            "keep": {"type": "string", "description": "Optional: more items to keep, comma "
+                                                      "separated, e.g. bronze arrows."}}}}},
 ]
 
 

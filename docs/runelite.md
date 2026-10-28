@@ -16,6 +16,10 @@ few settings of his own.
 | Status Bars | on, HP left of the inventory | His HP, and the eat reflex. |
 | Key Remapping | on | Space for dialogs without typing into chat. |
 
+In the game's own settings: the bank's quantity set to **All** (the button at the bottom of
+the bank), and **Esc closes the current interface** (Settings → Controls). His `bank` action
+clicks each item once and presses Esc.
+
 Also: fixed mode, camera zoomed all the way out, **shift-click drop** on, and RuneLite's
 **Remember client position** on (he restarts RuneLite to switch launcher characters, and the
 window has to come back where `calibrate` found it).

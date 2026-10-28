@@ -119,9 +119,12 @@ steps:
             then:
               - click_nearest: oak_tree
           - wait: 2
-      - click_nearest: bank
+      - bank:
 ```
 
+- **Banking:** `bank` opens the nearest bank, puts away everything but his tools and the
+  food his eat reflex uses (and anything after it: `bank: cowhide`), and closes it. Clicking
+  the booth only opens the bank, like the real game.
 - **Steps:** any action (`click_nearest: oak_tree`), `repeat:` a number of times or `until:` a
   condition, `if:`/`then:`/`else:`, and `stop:`.
 - **Conditions:** inventory full, inventory empty, free slots below N, idle, busy, hp below N%,

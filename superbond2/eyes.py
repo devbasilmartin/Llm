@@ -72,6 +72,7 @@ class View:
     inventory: list[str | None] = field(default_factory=lambda: [None] * SLOTS)
     hp: float | None = None             # 0..1 from the health bar; None when it isn't drawn
     busy: bool | None = None            # the player moved since the last look; None on the first
+    bank_open: bool = False             # the bank's window covers the 3D view
 
     def nearest(self, name: str) -> Highlight | None:
         hits = [h for h in self.highlights if h.name == name]
@@ -117,7 +118,14 @@ class Eyes:
         view.inventory = self.inventory(img)
         view.hp = self.hp(img)
         view.busy = self.busy(img)
+        view.bank_open = self.bank_open(img)
         return view
+
+    def bank_open(self, img: np.ndarray, tol: int = 10, share: float = 0.4) -> bool:
+        """Most of the 3D view is the bank window's brown. (A guess at the color until it's
+        measured on the real client with `look` and the bank open.)"""
+        vp = self.layout.viewport
+        return bool(color_mask(vp.crop(img), BANK_FILL, tol).mean() >= share)
 
     # --- the pieces ---------------------------------------------------------------------
     def in_game(self, img: np.ndarray, tol: int = 12, need: float = 0.85) -> bool:
@@ -201,6 +209,9 @@ def _near(px: int) -> str:
     return "right next to you" if px < 60 else "close" if px < 150 else "far"
 
 
+BANK_FILL = (73, 64, 52)        # the bank window's background (not measured yet)
+
+
 def describe(view: View, registry: Registry | None = None) -> str:
     """The View as the short text lines the brain reads."""
     if not view.in_game:
@@ -211,6 +222,8 @@ def describe(view: View, registry: Registry | None = None) -> str:
     if view.busy is not None:
         lines.append("You are: " + ("busy (your character is doing something)" if view.busy
                                     else "idle"))
+    if view.bank_open:
+        lines.append("The bank is open (bank puts things away; press esc closes it)")
     used = sum(view.items().values())
     things = ", ".join(f"{n} {name.replace('_', ' ')}" for name, n in view.items().most_common())
     lines.append(f"Inventory: {used}/{SLOTS}" + (f": {things}" if things else " (empty)"))

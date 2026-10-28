@@ -481,6 +481,7 @@ class Brain:
                 return self._record(Turn(self.turns, "", {}, f"logged out, and logging back in "
                                          f"failed: {e}", False, 0), "", None)
             view = self.actions.look()
+        self.actions.keep = set(self.memory.reflexes()["food"])   # banking keeps his food
         stop = self.reflexes(view)
         if self.reflexes.last:
             self.recent.append(f"{self.turns}. {self.reflexes.last}")

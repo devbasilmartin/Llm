@@ -15,7 +15,7 @@ A routine is YAML, kept simple enough for a small model to write:
                 then:
                   - click_nearest: oak_tree
               - wait: 2
-          - click_nearest: bank
+          - bank:
 
 A step is one of:
 - an action, written `action: argument`: click_nearest, click_item, click_slot, drop_all,
@@ -48,10 +48,11 @@ from .eyes import View
 from .layout import SLOTS
 
 ACTION_NAMES = ["click_nearest", "click_item", "click_slot", "drop_all", "press", "wait",
-                "wait_until_idle"]       # the ones a routine step can use
+                "wait_until_idle", "bank"]       # the ones a routine step can use
 INT_ACTIONS = {"click_slot", "wait", "wait_until_idle"}
 ARG = {"click_nearest": "name", "click_item": "item", "click_slot": "slot", "drop_all": "item",
-       "press": "key", "wait": "seconds", "wait_until_idle": "timeout"}
+       "press": "key", "wait": "seconds", "wait_until_idle": "timeout", "bank": "keep"}
+OPTIONAL_ARG = {"bank"}  # steps that work with nothing after them
 MAX_STEPS = 40          # in the whole routine, counting nested ones
 MAX_DEPTH = 4
 MAX_REPEAT = 100        # passes of one repeat
@@ -151,6 +152,8 @@ def parse_step(raw, depth: int, where: str) -> Step:
     if name in INT_ACTIONS:
         if not isinstance(arg, (int, float)) or isinstance(arg, bool):
             raise RoutineError(f"{where}: {name} needs a number, got {arg!r}")
+    elif name in OPTIONAL_ARG and arg in ("", None):
+        arg = ""
     elif not isinstance(arg, (str, int)) or arg in ("", None):
         raise RoutineError(f"{where}: {name} needs a name, got {arg!r}")
     return Step("action", f"{name}: {arg}", action=name, arg=arg)
@@ -182,7 +185,7 @@ def step_from_line(line: str, where: str = "step") -> dict:
             arg = int(float(arg))
         except ValueError:
             raise RoutineError(f"{where}: {name} needs a number, like '{name} 2'") from None
-    elif not arg:
+    elif not arg and name not in OPTIONAL_ARG:
         raise RoutineError(f"{where}: {name} needs something after it, like 'click_nearest oak_tree'")
     step = {name: arg}
     if name == "click_nearest" and not cond:

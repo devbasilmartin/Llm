@@ -22,7 +22,7 @@ steps:
             then:
               - click_nearest: oak_tree
           - wait: 2
-      - click_nearest: bank
+      - bank:
 """
 
 

@@ -14,9 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Keep food out of the bank.** Banking deposits everything that isn't a tool, so he
-  banks his trout and the eat reflex has nothing. Banking keeps his reflex food (or the
-  routine can say what to keep). Done when: the sim and tests show food staying.
 - [ ] **Deaths.** Notice a death (HP back to full, inventory gone, in the sim: `game.deaths`),
   tell him, post it on Discord, count it in the daily summary. Done when: tested.
 - [ ] **Bake-off grading, second look.** Check each scenario's accepted answers against the
@@ -41,6 +38,9 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Food stays out of the bank**: the sim's bank now works like the real one (a click opens
+  it, a click on a slot banks all of that item, Esc closes it), and a `bank` action keeps his
+  tools and reflex food. The bank's color is a guess until `look` is run with it open.
 - **`!bakeoff` options**: `--think` (auto/on/off/low/medium/high) and `--only` with scenario
   ids, checked like models; anything else is refused with what it takes.
 - **Background thinking** (see the commit after 58043a4): starts with routines that have taken

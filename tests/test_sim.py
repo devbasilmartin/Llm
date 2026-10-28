@@ -1,6 +1,6 @@
 """The simulated game behaves like the real one where superbond2 will rely on it, checked
 through the eyes, the way superbond2 will see it."""
-from superbond2.eyes import UNTAGGED, Eyes
+from superbond2.eyes import Eyes
 from superbond2.layout import SLOTS
 from superbond2.sim import SimGame, lumbridge
 
@@ -29,13 +29,17 @@ def test_chopping_fills_the_inventory_then_stops():
     assert game.doing is None
 
 
-def test_the_bank_takes_everything_but_tools():
+def test_the_bank_opens_and_takes_what_you_click():
     game = lumbridge()
     game.give("oak_logs", 10)
     bank = next(t for t in game.things if t.name == "bank")
     game.click(bank.box.center)
-    assert see(game).inventory[0] == UNTAGGED and see(game).free_slots == SLOTS - 1
-    assert game.bank == {"oak_logs": 10, "trout": 3}
+    assert game.bank_open and see(game).bank_open and see(game).highlights == []
+    logs = game.inventory.index("oak_logs")
+    game.click(game.layout.slot(logs).center)                # quantity All: every oak log
+    assert game.bank == {"oak_logs": 10} and "trout" in game.inventory
+    game.key("esc")
+    assert not see(game).bank_open and see(game).highlights
 
 
 def test_a_depleted_tree_loses_its_highlight_until_it_grows_back():
