@@ -14,7 +14,41 @@ Rules for unattended rounds:
 
 ## Queue
 
-(Nothing left that can be done without the owner. Add items here to start the loop again.)
+Built and tested on the simulated game; screen positions and colors the real client decides
+are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
+
+- [ ] **1. Dialogue reading.** The eyes read the NPC dialogue box: who's talking, what they
+  say, "Click here to continue", and numbered options. In the sim and the prompt.
+- [ ] **9. Talking: `talk_to`, `choose`, `continue`.** Actions (and routine steps) to start a
+  conversation, pick an option by number or text, and click through.
+- [ ] **6. `walk_to <place>`.** Named places with coordinates; walk by clicking the minimap
+  towards the target, checking position as he goes (needs a position readout: the sim's first,
+  then RuneLite's coordinates overlay).
+- [ ] **7. Doors, gates, stairs, ladders.** Through the right-click menu (Open, Climb-up,
+  Climb-down); the sim gets a door and a ladder between two floors.
+- [ ] **12. Vampyre Slayer in the sim.** A whole quest, end to end, as a test bed: talk to
+  Morgan, get garlic, get a stake from Dr Harlow, the beer, the hammer, Draynor Manor, the fight.
+- [ ] **2. Where am I.** Position from a RuneLite coordinates overlay (OCR), and a named place
+  for it, in the prompt.
+- [ ] **3. Levels and XP.** Read levels (Skills tab) and XP drops; level-ups to Discord, XP per
+  hour in the daily summary.
+- [ ] **14. Equipment.** Wear/wield items, read the equipment tab, in the prompt.
+- [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
+  and a routine step.
+- [ ] **15. Shops.** Buy and sell in a shop window, with a price sanity check from the wiki.
+- [ ] **18. Discord reactions.** 👎 on a goal post vetoes it; 👍 on a question answers yes.
+- [ ] **23. Stuck detector.** The same screen for many turns: hand over to the thoughtful
+  brain, then tell the owner.
+- [ ] **22. Random events.** Recognise a random event NPC (its highlight or dialogue) and
+  dismiss it.
+- [ ] **21. Memory sleep.** Now and then the thoughtful brain boils old notes down into lessons
+  so the notebook stays short.
+- [ ] **11. Quest points and the quest log.** Read them, track them toward Dragon Slayer's 32.
+- [ ] **10. Quest Helper.** Read its step text and follow its `quest_target` highlights.
+- [ ] **16. The Grand Exchange.** Buy and sell with wiki prices and guard rails (no selling
+  far under price, no buying far over).
+- [ ] **17. Smarter combat.** Targets by level, loot rules, burying bones, attack styles.
+- [ ] **25. A BPE tokenizer** for the tiny GPT, compared with letters (learn/).
 
 ## Waiting on the owner
 
