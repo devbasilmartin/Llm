@@ -14,9 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Bake-off grading, second look.** Check each scenario's accepted answers against the
-  failures in the owner's report (wiki-first answers, "drop method" wording). Change only
-  what's clearly unfair, and note each change in bench/README.md.
 - [ ] **Code review** of superbond2/ for bugs, and fix what's real.
 - [ ] **Learning track 1: the wiki as text.** Fetch a few hundred OSRS Wiki pages politely
   (the existing Wiki client's rules), cleaned to plain text, into `learn/data/` (not in git).
@@ -36,6 +33,8 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Bake-off grading**: a wiki search first now gets an answer and the next call is graded;
+  walking away from the i6 scam passes. The other failures (d2, d3, j3, j4) were fair.
 - **Deaths**: noticed between any two looks (also mid-routine, which they stop), told to him
   with what he lost, posted on Discord, logged, and counted in the daily summary.
 - **Food stays out of the bank**: the sim's bank now works like the real one (a click opens

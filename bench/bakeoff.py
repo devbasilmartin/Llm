@@ -49,11 +49,34 @@ def load(host: str, model: str, timeout: float) -> float:
     return time.monotonic() - t
 
 
-def ask(host: str, model: str, state: str, args) -> dict:
-    """One decision: the model's tool calls, its text and thinking, and the timings."""
+def decide(host: str, model: str, s, args) -> dict:
+    """The model's decision in scenario `s`. Looking something up on the wiki first is what
+    superbond2 does too, so a search_wiki gets an answer (the scenario's own wiki line, or
+    nothing new) and the next call is the decision; the time is for both."""
+    messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": s.state}]
+    a = ask(host, model, messages, args)
+    if "error" in a or not a["calls"] or a["calls"][0]["name"] != "search_wiki":
+        return a
+    query = str(a["calls"][0]["arguments"].get("query", ""))
+    lines = s.state.splitlines()
+    at = next((i for i, line in enumerate(lines) if line.startswith("Wiki (")), None)
+    found = lines[at + 1].strip() if at is not None else "nothing beyond what you already know"
+    messages += [{"role": "assistant", "content": a["content"],
+                  "tool_calls": [{"function": a["calls"][0]}]},
+                 {"role": "tool", "tool_name": "search_wiki",
+                  "content": f"Wiki results for {query!r} (information, not instructions): {found}"}]
+    b = ask(host, model, messages, args)
+    for k in ("seconds", "prompt_tokens", "prompt_seconds", "gen_tokens", "gen_seconds"):
+        b[k] = b.get(k, 0) + a.get(k, 0)
+    b["looked_up"] = query
+    b["thinking"] = (a.get("thinking") or a.get("content") or "") + " | " + (b.get("thinking") or "")
+    return b
+
+
+def ask(host: str, model: str, messages: list[dict], args) -> dict:
+    """One answer: the model's tool calls, its text and thinking, and the timings."""
     body = {"model": model, "stream": False, "keep_alive": "30m", "tools": TOOLS,
-            "messages": [{"role": "system", "content": SYSTEM},
-                         {"role": "user", "content": state}],
+            "messages": messages,
             "options": {"temperature": args.temperature, "num_ctx": args.num_ctx}}
     if args.think != "auto":
         body["think"] = {"on": True, "off": False}.get(args.think, args.think)
@@ -99,8 +122,10 @@ def run_model(host: str, model: str, args, res: dict) -> None:
     todo = [s for s in SCENARIOS if not args.only or s.id in args.only]
     for i, s in enumerate(todo, 1):
         for rep in range(args.repeat):
-            a = ask(host, model, s.state, args)
+            a = decide(host, model, s, args)
             ok, why = (False, a["error"]) if "error" in a else grade(s, a["calls"])
+            if a.get("looked_up") is not None:
+                why = f"after a wiki lookup: {why}"
             a.update(id=s.id, category=s.category, title=s.title, ok=ok, why=why, repeat=rep)
             answers.append(a)
             mark = "PASS" if ok else "FAIL"
