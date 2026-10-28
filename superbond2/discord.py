@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -43,8 +44,10 @@ USER_AGENT = "DiscordBot (https://github.com/devbasilmartin/Llm, 0.1)"
 MAX_POST = 1900                 # Discord allows 2000 characters a message
 MAX_HEARD = 500                 # characters of one owner message he's shown
 COMMANDS = ("stop", "pause", "resume", "veto", "help")
-HELP = ("Say `stop`, `pause`, `resume`, `veto` (or `veto <why>`) to say no to his goal, or "
-        "anything else as advice. When he's asked something, your next message is the answer.")
+HELP = ("Say `stop`, `pause`, `resume`, `veto` (or `veto <why>`, or tap 👎 under his goal) to say "
+        "no to his goal, or anything else as advice. When he's asked something, your next message "
+        "is the answer (or tap 👍 / 👎).")
+YES, NO = "👍", "👎"
 
 
 class DiscordError(Exception):
@@ -110,12 +113,25 @@ class Discord:
                 raise DiscordError(f"couldn't reach Discord: {getattr(e, 'reason', e)}") from None
         raise DiscordError("Discord kept saying slow down")
 
-    def post(self, text: str) -> None:
-        text = text.strip()
+    def post(self, text: str) -> str | None:
+        """Post (split if long); returns the last message's id."""
+        text, last = text.strip(), None
         while text:
             chunk, text = text[:MAX_POST], text[MAX_POST:]
-            self._call("POST", f"/channels/{self.channel}/messages",
-                       {"content": chunk, "allowed_mentions": {"parse": []}})   # no pings
+            got = self._call("POST", f"/channels/{self.channel}/messages",
+                             {"content": chunk, "allowed_mentions": {"parse": []}})   # no pings
+            last = (got or {}).get("id", last)
+        return last
+
+    def react(self, message: str, emoji: str) -> None:
+        """Put a reaction under a message, so the owner can just tap it."""
+        self._call("PUT", f"/channels/{self.channel}/messages/{message}/reactions/"
+                          f"{urllib.parse.quote(emoji)}/@me")
+
+    def owner_reacted(self, message: str, emoji: str) -> bool:
+        users = self._call("GET", f"/channels/{self.channel}/messages/{message}/reactions/"
+                                  f"{urllib.parse.quote(emoji)}?limit=25") or []
+        return any(str(u.get("id")) == self.owner for u in users)
 
     def post_file(self, path: Path, text: str = "") -> None:
         """Attach a file (a bake-off report) to a message."""

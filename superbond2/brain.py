@@ -28,7 +28,7 @@ from .memory import Memory
 from .model import ModelError, Reply
 from .routines import CONDITION_HELP, RoutineError, Runner, simple_routine
 from .characters import LoginError
-from .discord import COMMANDS, HELP, DiscordError, daily_summary
+from .discord import COMMANDS, HELP, NO, YES, DiscordError, daily_summary
 from .wiki import Wiki, WikiError
 
 SYSTEM = """\
@@ -245,6 +245,10 @@ class Owner:
         self.log(f"[question for owner] {question}")
         return None
 
+    def goal(self, text: str) -> None:
+        """A new goal, which the owner may veto."""
+        self.tell(text)
+
     def inbox(self) -> list[str]:
         """What the owner has said since the last look."""
         out, self.said = self.said, []
@@ -256,24 +260,45 @@ class DiscordOwner(Owner):
         super().__init__(log)
         self.discord = discord
 
-    def _post(self, text: str) -> None:
+        self.goal_post: str | None = None       # his latest goal: 👎 under it is a veto
+        self.question_post: str | None = None   # his open question: 👍 / 👎 answer it
+
+    def _post(self, text: str, reactions: tuple = ()) -> str | None:
         try:
-            self.discord.post(text)
+            mid = self.discord.post(text)
+            for emoji in reactions if mid else ():
+                self.discord.react(mid, emoji)
+            return mid
         except DiscordError as e:
             self.log(f"(couldn't post to Discord: {e})")
+            return None
 
     def tell(self, text: str) -> None:
         super().tell(text)
         self._post(text)
 
+    def goal(self, text: str) -> None:
+        Owner.tell(self, text)
+        self.goal_post = self._post(text + "\n(👎 to veto)", (NO,))
+
     def ask(self, question: str) -> str | None:
         super().ask(question)
-        self._post(f"❓ {question}\n(your next message here is the answer)")
+        self.question_post = self._post(f"❓ {question}\n(reply here, or tap 👍 / 👎)", (YES, NO))
         return None
 
     def inbox(self) -> list[str]:
         try:
-            return super().inbox() + self.discord.new_messages()
+            heard = super().inbox() + self.discord.new_messages()
+            if self.question_post:
+                for emoji, word in ((YES, "yes"), (NO, "no")):
+                    if self.discord.owner_reacted(self.question_post, emoji):
+                        heard.append(word)
+                        self.question_post = None
+                        break
+            if self.goal_post and self.discord.owner_reacted(self.goal_post, NO):
+                heard.append("veto")
+                self.goal_post = None
+            return heard
         except DiscordError as e:
             self.log(f"(couldn't read Discord: {e})")
             return []
@@ -647,7 +672,7 @@ class Brain:
                                   "change it only when it's done or can't be done, and say which "
                                   "in the reason")
                 m.set_goal(args["goal"], reason, self.turns)
-                self.owner.tell(f"New goal: {args['goal']}. Why: {reason}")
+                self.owner.goal(f"New goal: {args['goal']}. Why: {reason}")
                 return Result(True, "goal set; the owner has been told")
             if name == "journal":
                 m.write_journal(args["entry"])

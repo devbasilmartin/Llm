@@ -22,6 +22,7 @@ class FakeDiscord:
     def __init__(self):
         self.messages = [{"id": "5", "author": {"id": OWNER}, "content": "old, before he started"}]
         self.posted, self.requests, self.fail, self.files = [], [], None, []
+        self.reactions: dict = {}           # (message id, emoji) -> user ids
 
     def say(self, content, author=OWNER, bot=False):
         mid = str(max(int(m["id"]) for m in self.messages) + 1)
@@ -36,12 +37,21 @@ class FakeDiscord:
         if req.get_method() == "POST" and req.get_header("Content-type").startswith("multipart"):
             self.files.append(req.data)
             return io.BytesIO(b"{}")
+        if "/reactions/" in req.full_url:
+            from urllib.parse import unquote
+            mid, emoji = req.full_url.split("/messages/")[1].split("/reactions/")
+            emoji = unquote(emoji.split("/")[0].split("?")[0])
+            if req.get_method() == "PUT":
+                self.reactions.setdefault((mid, emoji), []).append("999")
+                return io.BytesIO(b"")
+            users = [{"id": u} for u in self.reactions.get((mid, emoji), [])]
+            return io.BytesIO(json.dumps(users).encode())
         if req.get_method() == "POST":
             body = json.loads(req.data)
             assert body["allowed_mentions"] == {"parse": []}
             self.posted.append(body["content"])
             self.say(body["content"], author="999", bot=True)
-            return io.BytesIO(b"{}")
+            return io.BytesIO(json.dumps({"id": self.messages[-1]["id"]}).encode())
         url = req.full_url
         if "after=" in url:
             after = int(url.split("after=")[1].split("&")[0])
@@ -224,3 +234,40 @@ def test_the_plain_owner_has_no_discord():
     o = Owner(log=lambda s: None)
     o.said.append("hi")
     assert o.inbox() == ["hi"] and o.inbox() == []
+
+
+
+# --- reactions ------------------------------------------------------------------------------
+def tap(fake, text_start, emoji, who=OWNER):
+    mid = next(m["id"] for m in fake.messages if m["content"].startswith(text_start))
+    fake.reactions.setdefault((mid, emoji), []).append(who)
+
+
+def test_thumbs_down_under_a_goal_vetoes_it(setup, fake):
+    b, model, memory = setup
+    b.listen()
+    b.dispatch("set_goal", {"goal": "Wilderness at level 3", "reason": "yolo"})
+    assert fake.posted[-1].endswith("(👎 to veto)")
+    mid = next(m["id"] for m in fake.messages if m["content"].startswith("New goal"))
+    assert fake.reactions[(mid, "👎")] == ["999"]               # the bot put one there to tap
+    b.listen()
+    assert memory.goal() is not None                              # its own doesn't count
+    tap(fake, "New goal", "👎", who="333")                        # nor a stranger's
+    b.listen()
+    assert memory.goal() is not None
+    tap(fake, "New goal", "👎")
+    b.listen()
+    assert memory.goal() is None and fake.posted[-1] == "Vetoed: Wilderness at level 3"
+    b.listen()                                                    # once is enough
+    assert fake.posted[-1] == "Vetoed: Wilderness at level 3"
+
+
+def test_thumbs_up_answers_his_question(setup, fake):
+    b, model, memory = setup
+    b.listen()
+    b.dispatch("ask_owner", {"question": "Vampyre Slayer next?"})
+    assert fake.posted[-1].startswith("❓ Vampyre Slayer next?")
+    tap(fake, "❓", "👍")
+    b.listen()
+    assert b.recent[-1].endswith("answered your question 'Vampyre Slayer next?': yes")
+    assert b.asked is None

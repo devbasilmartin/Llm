@@ -19,8 +19,9 @@ You reply there from your phone:
 |---|---|
 | `stop` | stops playing |
 | `pause` / `resume` | waits / carries on |
-| `veto`, or `veto too risky` | drops his current goal (with your reason) and picks another |
+| `veto`, or `veto too risky`, or tap 👎 under his goal post | drops his current goal (with your reason) and picks another |
 | `help` | lists these |
+| tap 👍 or 👎 under his question | answers it yes or no |
 | anything else | reaches him next turn as advice from you, or as the answer if he asked something |
 
 Messages starting with `!` go to the helper instead, which runs jobs on the VM like
@@ -45,7 +46,7 @@ if they claim to be you.
     chat**, including with Claude.
 - **OAuth2** tab → *URL Generator*:
   - Scope: `bot`.
-  - Permissions: *View Channels*, *Send Messages*, *Read Message History*.
+  - Permissions: *View Channels*, *Send Messages*, *Read Message History*, *Add Reactions*.
   - Open the URL it makes and add the bot to your server.
 
 **3. The two IDs** (Discord app)
@@ -86,7 +87,7 @@ ways. After that, `play` uses Discord on its own (`--no-discord` turns it off).
 - **"the token is wrong"**: reset the token in the Developer Portal and put the new one in
   `discord.env`.
 - **"can't see or post in that channel"**: the bot isn't in the server, or lacks the three
-  permissions. Redo the URL Generator step.
+  permissions. Redo the URL Generator step. (The 👍 / 👎 under his posts need *Add Reactions*.)
 - **The test posts but never hears you**: Message Content Intent is off, or
   `DISCORD_OWNER_ID` isn't your user ID.
 - **"can be read by other users"**: run `chmod 600 ~/.config/superbond2/discord.env`.

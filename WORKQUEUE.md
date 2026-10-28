@@ -19,7 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **18. Discord reactions.** 👎 on a goal post vetoes it; 👍 on a question answers yes.
 - [ ] **23. Stuck detector.** The same screen for many turns: hand over to the thoughtful
   brain, then tell the owner.
 - [ ] **22. Random events.** Recognise a random event NPC (its highlight or dialogue) and
@@ -55,6 +54,8 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 ## Done
 
+- **18. Discord reactions**: goal posts come with a 👎 to tap (a veto), questions with 👍 / 👎
+  (yes / no); only the owner's reactions count, each once. The bot needs Add Reactions.
 - **15. Shops**: `trade` (Trade from the shopkeeper's menu), `buy` (finds the item by hovering
   the shop's slots; 1/5/10/50 menu options), `sell` (refused for things worth over 1,000 coins
   by the wiki's value, unless sure=yes: shops pay a fraction). The sim gets shops and coin stacks.
