@@ -92,7 +92,7 @@ bottom.
 - [ ] Combat and the Wilderness on his own terms; Obor; Dragon Slayer
 
 ### Learning track (whenever)
-- [ ] Fetch the OSRS wiki politely and clean it into plain text
+- [x] Fetch the OSRS wiki politely and clean it into plain text (`python -m learn.fetch_wiki`)
 - [ ] A readable character-level GPT: tokenizer, attention, MLP, training loop, sampling
 - [ ] Train it on the CPU; read its fake wiki pages
 

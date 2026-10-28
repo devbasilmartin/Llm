@@ -14,9 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Learning track 1: the wiki as text.** Fetch a few hundred OSRS Wiki pages politely
-  (the existing Wiki client's rules), cleaned to plain text, into `learn/data/` (not in git).
-  Done when: a script does it, tested on a few pages.
 - [ ] **Learning track 2: a tiny GPT.** A character-level GPT from scratch in numpy, readable
   first: tokenizer, attention, MLP, training loop, sampling, with comments that teach. Done
   when: it trains a little on the CPU and samples fake wiki text.
@@ -32,6 +29,9 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Learning track 1**: `python -m learn.fetch_wiki` gets articles 50 per request (polite:
+  the wiki client's User-Agent, 1 request/s, a week's cache) as plain text, skipping stubs,
+  lists and interface copies; tested on a fake API and on 20 real pages.
 - **Code review**, four real bugs fixed: after waiting for background thinking, a turn used
   the screen from before the wait; that wait didn't beat the heartbeat (the watchdog could
   kill a healthy game); a reflex logout still asked a model what to do on the login screen;
