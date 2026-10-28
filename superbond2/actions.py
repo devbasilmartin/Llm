@@ -88,6 +88,7 @@ class Actions:
         self.keep: set[str] = set()         # never banked: his reflex food (the brain sets it)
         self.deaths: list[list[str]] = []   # each death noticed: what he lost
         self._untagged: dict[int, str] = {}  # slot -> the name of the untagged item there
+        self.wearing: dict[str, str] = {}    # equipment slot -> item, as last read
         self.look()
 
     def look(self) -> View:
@@ -304,6 +305,51 @@ class Actions:
                                      if held else "")
         return self._after(before, did)
 
+    # --- equipment ------------------------------------------------------------------------------
+    def read_wearing(self) -> dict[str, str]:
+        if hasattr(self.body, "read_equipment"):
+            self.wearing = self.body.read_equipment() or {}
+        return self.wearing
+
+    def _worn(self) -> str:
+        return ", ".join(f"{i.replace('_', ' ')} ({w})" for w, i in self.wearing.items()) or "nothing"
+
+    def equip(self, item: str) -> Result:
+        """Wear or wield an item from your inventory (armour, a weapon, a shield)."""
+        item = as_name(item)
+        now = self.look()
+        slots = now.slots_with(item)
+        if not slots:
+            return Result(False, f"no {item} in your inventory")
+        rows = self.body.open_menu(self.eyes.layout.slot(slots[0]).center)
+        row = next(((t, at) for t, at in rows if t.lower().split(" ")[0] in ("wield", "wear", "equip")), None)
+        if row is None:
+            self.body.close_menu()
+            return Result(False, f"{item} isn't something to wear (its menu: {', '.join(t for t, _ in rows)})")
+        self.body.click(row[1])
+        self.body.wait(0.6)
+        self.look()
+        self.read_wearing()
+        return Result(True, f"{row[0].lower()}; wearing: {self._worn()}")
+
+    def unequip(self, item: str) -> Result:
+        """Take off something you're wearing (it goes into your inventory)."""
+        item = as_name(item)
+        where = next((w for w, i in self.read_wearing().items() if i == item), None)
+        if where is None:
+            return Result(False, f"you're not wearing {item} (wearing: {self._worn()})")
+        if self.view.free_slots == 0:
+            return Result(False, "no room in your inventory to take it off")
+        lay = self.eyes.layout
+        self.body.click(lay.tabs["equipment"])
+        self.body.wait(0.6)
+        self.body.click(lay.equipment_slots[where])
+        self.body.wait(0.6)
+        self.body.click(lay.tabs["inventory"])
+        self.look()
+        self.read_wearing()
+        return Result(True, f"took off {item.replace('_', ' ')}; wearing: {self._worn()}")
+
     # --- getting around -----------------------------------------------------------------------
     def walk_to(self, place: str) -> Result:
         """Walk to a named place (a bank, a town, a mine...): minimap clicks, a bit at a time."""
@@ -517,6 +563,8 @@ ACTIONS = [
     _spec("inspect", Actions.inspect.__doc__, name="A highlight name, e.g. rock, enemy, marked."),
     _spec("mark", Actions.mark.__doc__, name="A name from your last survey, e.g. Willow tree."),
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
+    _spec("equip", Actions.equip.__doc__, item="An item in your inventory, e.g. bronze sword."),
+    _spec("unequip", Actions.unequip.__doc__, item="Something you're wearing, e.g. wooden shield."),
     _spec("walk_to", Actions.walk_to.__doc__, place="A place name, e.g. draynor bank, grand exchange."),
     _spec("interact", Actions.interact.__doc__, target="A highlight name, or a name from your survey, e.g. Door.",
           option="The menu option, e.g. Open, Climb-up, Climb-down."),

@@ -56,7 +56,12 @@ class Layout:
     hp_bar: Rect = Rect(529, 210, 10, 250)
     tabs: dict = field(default_factory=lambda: {
         "combat": (538, 186), "skills": (571, 186), "quest": (604, 186), "inventory": (637, 186),
-        "magic": (736, 186), "logout": (637, 484)})
+        "equipment": (670, 186), "prayer": (703, 186), "magic": (736, 186), "logout": (637, 484)})
+    # the Equipment tab's slots (a guess until measured)
+    equipment_slots: dict = field(default_factory=lambda: {
+        "head": (641, 219), "cape": (600, 258), "neck": (641, 258), "ammo": (682, 258),
+        "weapon": (585, 297), "body": (641, 297), "shield": (697, 297), "legs": (641, 337),
+        "hands": (585, 377), "feet": (641, 377), "ring": (697, 377)})
 
     # the hover text at the top left of the 3D view ("Chop down Oak tree / 2 more options")
     # and right-click menus (a header, then one row per option): not measured yet

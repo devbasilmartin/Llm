@@ -52,6 +52,9 @@ class SimBody:
     def read_levels(self):
         return self.game.levels()
 
+    def read_equipment(self):
+        return self.game.read_equipment()
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -153,6 +156,24 @@ class RealBody:
         finally:
             self.click(tabs["inventory"])
             time.sleep(0.3)
+
+    def read_equipment(self):
+        """Open the Equipment tab, hover each slot ("Remove Bronze sword"), go back."""
+        from .actions import as_name
+        from .layout import Layout
+        lay = Layout()
+        self.click(lay.tabs["equipment"])
+        time.sleep(0.6)
+        worn = {}
+        try:
+            for where, pt in lay.equipment_slots.items():
+                h = self.read_hover(pt)
+                if h is not None and h.text.lower().startswith("remove"):
+                    worn[where] = as_name(h.name)
+        finally:
+            self.click(lay.tabs["inventory"])
+            time.sleep(0.3)
+        return worn
 
     def read_dialogue(self):
         """What the dialogue in the chatbox says (a text.Dialogue), or None."""

@@ -32,6 +32,11 @@ TICK = 0.6                       # one game tick, in seconds
 GATHER_XP = {"logs": ("woodcutting", 25), "oak_logs": ("woodcutting", 37.5),
              "willow_logs": ("woodcutting", 67.5), "copper_ore": ("mining", 17.5),
              "tin_ore": ("mining", 17.5), "iron_ore": ("mining", 35)}
+WEARABLE = {"bronze_sword": ("weapon", "Wield"), "bronze_scimitar": ("weapon", "Wield"),
+            "iron_scimitar": ("weapon", "Wield"), "wooden_shield": ("shield", "Wield"),
+            "anti_dragon_shield": ("shield", "Wield"), "bronze_full_helm": ("head", "Wear"),
+            "leather_body": ("body", "Wear"), "bronze_platelegs": ("legs", "Wear"),
+            "leather_boots": ("feet", "Wear"), "leather_gloves": ("hands", "Wear")}
 FOOD = {"trout": 7, "shrimps": 3, "lobster": 12, "cooked_meat": 3}
 
 
@@ -103,6 +108,7 @@ class SimGame:
         self.flags: set[str] = set()                        # what conversations have set
         self.quest_points = 0
         self.xp: Counter = Counter()          # skill -> XP
+        self.equipment: dict[str, str] = {}   # slot -> item
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
         self.path: list = []                                # the tiles on the way there
@@ -151,6 +157,12 @@ class SimGame:
         if self._tab == "logout" and abs(pt[0] - self.layout.logout_button[0]) <= 40 and \
                 abs(pt[1] - self.layout.logout_button[1]) <= 12:
             self.screen, self.doing, self._tab = "login", None, "inventory"
+            return
+        if self._tab == "equipment":         # the panel shows what he wears, not the bag
+            for where, at in self.layout.equipment_slots.items():
+                if abs(pt[0] - at[0]) <= 14 and abs(pt[1] - at[1]) <= 14 and where in self.equipment:
+                    if self._put(self.equipment[where]):
+                        del self.equipment[where]
             return
         slot = self.layout.slot_at(pt)
         if slot is not None:
@@ -222,6 +234,18 @@ class SimGame:
         return Hover(f"{thing.verb} {thing.label}", thing.label, HOVER_KIND.get(thing.kind, "object"))
 
     def open_menu(self, pt, shift: bool = False) -> list:
+        slot = self.layout.slot_at(pt) if self._tab == "inventory" else None
+        if slot is not None and self.inventory[slot] is not None:
+            item = self.inventory[slot]
+            label = item.replace("_", " ").capitalize()
+            verb = WEARABLE[item][1] if item in WEARABLE else "Use"
+            options = [f"{verb} {label}"] + (["Use"] if item in WEARABLE else []) + \
+                [f"Drop {label}", f"Examine {label}", "Cancel"]
+            lay = self.layout
+            rows = [(o, (int(pt[0]), int(pt[1]) + lay.menu_header + lay.menu_row * i + lay.menu_row // 2))
+                    for i, o in enumerate(options)]
+            self.menu_open = (("slot", slot), rows)
+            return rows
         thing = self._under(pt)
         options = ["Walk here", "Cancel"]
         if thing is not None:
@@ -378,6 +402,12 @@ class SimGame:
         thing, rows = self.menu_open
         self.menu_open = None
         option = next((o for o, at in rows if abs(at[1] - pt[1]) <= 7 and abs(at[0] - pt[0]) <= 100), None)
+        if isinstance(thing, tuple) and thing[0] == "slot":     # an item's menu
+            if option and option.split(" ")[0] in ("Wield", "Wear"):
+                self._wear(thing[1])
+            elif option and option.startswith("Drop"):
+                self.inventory[thing[1]] = None
+            return
         if option is None or thing is None:
             return
         if option == "Mark object":
@@ -420,9 +450,20 @@ class SimGame:
             return
         if shift:                              # shift-click drop
             self.inventory[i] = None
+        elif item in WEARABLE:                 # left-click wields or wears
+            self._wear(i)
         elif item in FOOD:
             self.inventory[i] = None
             self.hp = min(self.max_hp, self.hp + FOOD[item])
+
+    def _wear(self, i: int) -> None:
+        item = self.inventory[i]
+        where = WEARABLE[item][0]
+        self.inventory[i] = self.equipment.get(where)       # what was worn goes in the bag
+        self.equipment[where] = item
+
+    def read_equipment(self) -> dict[str, str]:
+        return dict(self.equipment)
 
     def _click_thing(self, thing: Thing) -> None:
         if thing.kind == "bank":

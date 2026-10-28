@@ -396,6 +396,7 @@ class Brain:
                     "(none yet: anything you do by hand a few times is worth saving as one)")
         if m.levels():
             lines += ["", levels.line(m.levels())]
+        lines.append(f"Wearing: {self.actions._worn()}")
         lines += ["", "Your routines:", routines, "",
                   (f"Reflexes: you eat {', '.join(r['food'])} automatically below {r['eat_below']}% HP"
                    if r["eat_below"] else "Reflexes: you don't eat automatically") +
@@ -419,6 +420,7 @@ class Brain:
         lines = [f"Your goal: {goal['goal']}" if goal else "Your goal: none yet."]
         if self.memory.levels():
             lines.append(levels.line(self.memory.levels()))
+        lines.append(f"Wearing: {self.actions._worn()}")
         lines += ["", "Your routines:", self.memory.routines.summary() if self.memory.routines.names()
                  else "(none yet)", "", "Recent turns, oldest first:"]
         lines += [r if len(r) <= FAST_LINE else r[:FAST_LINE - 3] + "..."
@@ -505,6 +507,7 @@ class Brain:
         self.mourn()
         if self.turns - self.levels_read >= LEVELS_EVERY:
             self.check_levels()
+            self.actions.read_wearing()
         stop = self.reflexes(view)
         if self.reflexes.last:
             self.recent.append(f"{self.turns}. {self.reflexes.last}")

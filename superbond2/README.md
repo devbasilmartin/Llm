@@ -275,6 +275,14 @@ highlights), `continue_dialogue` (space) and `choose` (an option's number or wor
 number keys). All three work as routine steps too. In the sim, NPCs have scripts that can
 give items and set quest flags.
 
+### Gear
+
+`equip <item>` wields or wears it (Wield or Wear from its right-click menu; what was worn there
+goes back in the bag), `unequip <item>` takes it off (from the Equipment tab). What he's
+wearing is read by hovering the Equipment tab's slots ("Remove Bronze sword"), and his prompts
+say `Wearing: bronze sword (weapon), wooden shield (shield)`. The slots' places are guesses
+until measured.
+
 ### Getting around
 
 `walk_to <place>` walks to a place in `places.yaml` (banks, towns, mines, Draynor Manor, the
