@@ -57,6 +57,11 @@ class Layout:
     tabs: dict = field(default_factory=lambda: {
         "combat": (538, 186), "skills": (571, 186), "quest": (604, 186), "inventory": (637, 186),
         "equipment": (670, 186), "prayer": (703, 186), "magic": (736, 186), "logout": (637, 484)})
+    # a shop's window: its items in a grid over the 3D view (a guess until measured)
+    shop_origin: tuple[int, int] = (90, 75)
+    shop_step: tuple[int, int] = (47, 47)
+    shop_cols: int = 8
+    shop_rows: int = 5
     # the Equipment tab's slots (a guess until measured)
     equipment_slots: dict = field(default_factory=lambda: {
         "head": (641, 219), "cape": (600, 258), "neck": (641, 258), "ammo": (682, 258),

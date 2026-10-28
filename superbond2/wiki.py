@@ -189,3 +189,13 @@ class Wiki:
         text = to_text(data["parse"]["wikitext"]["*"])
         where = f"{title}, {section}" if section else title
         return where, clip(text) + ("\nSections: " + ", ".join(names) if names else "")
+
+    def value(self, item: str) -> int | None:
+        """The item's value (its infobox's `value`, which shops price from), from the page's raw
+        wikitext; None if unknown."""
+        page = " ".join(str(item).replace("_", " ").split())
+        data = self._api(action="parse", page=page[:1].upper() + page[1:], redirects=1,
+                         prop="wikitext", section=0)
+        raw = (data.get("parse") or {}).get("wikitext", {}).get("*", "")
+        m = re.search(r"\|\s*value\d*\s*=\s*([\d,]+)", raw)
+        return int(m[1].replace(",", "")) if m else None

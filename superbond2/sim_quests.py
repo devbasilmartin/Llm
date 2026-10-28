@@ -39,7 +39,7 @@ HARLOW_TALK = {
 BARTENDER_TALK = {
     "start": [("say", "Bartender", "What'll it be?"),
               ("choose", [("A beer, please. (2 coins)", "beer"), ("Nothing, thanks.", "bye")])],
-    "beer": [("need", "coins", "broke"), ("take", "coins"), ("give", "beer"),
+    "beer": [("need", "coins", "broke"), ("take", "coins", 2), ("give", "beer"),
              ("say", "Bartender", "There you go.")],
     "broke": [("say", "Bartender", "No coins, no beer.")],
     "bye": [("say", "Bartender", "Suit yourself.")],
@@ -55,7 +55,7 @@ def vampyre_world(seed: int = 1) -> SimGame:
     """Lumbridge to start, with Vampyre Slayer laid out across Draynor and Varrock."""
     from .sim import lumbridge
     g = lumbridge(seed)
-    g.give("coins")
+    g.give("coins", 10)
     g.add("quest_dialog", "npc", 150, 120, 16, 30, label="Morgan", verb="Talk-to", talk=MORGAN_TALK,
           at=MORGAN)
     g.add("door", "static", 300, 100, 24, 40, label="Staircase", verb="Climb-up", marked=False,

@@ -40,7 +40,7 @@ def test_vampyre_slayer_start_to_finish():
     ok(act.continue_dialogue())
     ok(act.choose(1))
     ok(act.continue_dialogue())
-    assert "beer" in game.inventory and "coins" not in game.inventory
+    assert "beer" in game.inventory and game.coins == 8
     ok(act.talk_to("Dr Harlow"))
     ok(act.continue_dialogue())
     assert "stake" in game.inventory

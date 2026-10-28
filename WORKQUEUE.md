@@ -19,7 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **15. Shops.** Buy and sell in a shop window, with a price sanity check from the wiki.
 - [ ] **18. Discord reactions.** 👎 on a goal post vetoes it; 👍 on a question answers yes.
 - [ ] **23. Stuck detector.** The same screen for many turns: hand over to the thoughtful
   brain, then tell the owner.
@@ -49,11 +48,16 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   level reader's cells; and whether Sailing has changed the tab's layout.
 - Equipment tab open, wearing a few things: hover each slot and check the hover text says
   "Remove <item>", and a screenshot of the tab (it shows no name) to place the slots.
+- A shop open (a general store): a screenshot of the shop window, to place its item grid and
+  check its color; and that hovering an item says "Value <item>".
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **15. Shops**: `trade` (Trade from the shopkeeper's menu), `buy` (finds the item by hovering
+  the shop's slots; 1/5/10/50 menu options), `sell` (refused for things worth over 1,000 coins
+  by the wiki's value, unless sure=yes: shops pay a fraction). The sim gets shops and coin stacks.
 - **14. Equipment**: `equip` (Wield/Wear from the item's right-click menu), `unequip` (from
   the Equipment tab), what he's wearing read by hovering the tab's slots, a Wearing line in
   both prompts; actions and routine steps. Sim items to wear, swapping back into the bag.

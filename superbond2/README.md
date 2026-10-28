@@ -283,6 +283,10 @@ wearing is read by hovering the Equipment tab's slots ("Remove Bronze sword"), a
 say `Wearing: bronze sword (weapon), wooden shield (shield)`. The slots' places are guesses
 until measured.
 
+`trade <shopkeeper>` opens a shop; `buy <item> <n>` finds it by hovering the shop's slots and
+uses the menu's 1/5/10/50; `sell <item> <n>` sells, but anything the wiki says is worth over
+1,000 coins needs `sure=yes`: a shop pays a fraction of that, and the GE is better.
+
 ### Getting around
 
 `walk_to <place>` walks to a place in `places.yaml` (banks, towns, mines, Draynor Manor, the

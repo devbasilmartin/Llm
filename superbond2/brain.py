@@ -355,6 +355,8 @@ class Brain:
         self.background = None              # thinking while a routine plays: (thread, holder)
         self.background_min = BACKGROUND_MIN
         self.levels_read = -LEVELS_EVERY            # the turn levels were last read
+        if wiki is not None:                        # shop sales are checked against the wiki
+            actions.value_of = wiki.value
         self.session, self.character = session, character     # to log back in if dropped
         self.accounts = accounts or ([character] if character else [])   # ones he may play
         self.switched = 0                                     # the turn he last switched

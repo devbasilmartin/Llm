@@ -39,6 +39,7 @@ def as_name(text) -> str:
     return "_".join(str(text).lower().split())
 
 
+SELL_GUARD = 1000           # coins: worth more than this, a shop sale needs sure=yes
 PLACES_FILE = Path(__file__).resolve().parent / "places.yaml"
 ARRIVED = 2                 # tiles from a place that count as there
 WALK_STEP = 14              # tiles per minimap click (the minimap shows about 17 each way)
@@ -89,6 +90,7 @@ class Actions:
         self.deaths: list[list[str]] = []   # each death noticed: what he lost
         self._untagged: dict[int, str] = {}  # slot -> the name of the untagged item there
         self.wearing: dict[str, str] = {}    # equipment slot -> item, as last read
+        self.value_of = lambda item: None    # an item's value (the brain gives it the wiki's)
         self.look()
 
     def look(self) -> View:
@@ -347,6 +349,97 @@ class Actions:
             self.wait_until_idle(60)
         return self._after(before, f"used {item.replace('_', ' ')} on {on}", settle=0.6)
 
+    # --- shops ----------------------------------------------------------------------------------
+    def trade(self, name: str) -> Result:
+        """Open someone's shop (Trade from their right-click menu): a highlight name or their name."""
+        now = self.look()
+        target = now.nearest(as_name(name))
+        if target is None:
+            for h in sorted(now.highlights, key=lambda h: h.distance):
+                hover = self.body.read_hover(h.center)
+                if hover is not None and hover.name.lower() == str(name).strip().lower():
+                    target = h
+                    break
+        if target is None:
+            return Result(False, f"no {name} in sight")
+        rows = self.body.open_menu(target.center)
+        row = next(((t, at) for t, at in rows if t.lower().startswith("trade")), None)
+        if row is None:
+            self.body.close_menu()
+            return Result(False, f"{name} doesn't run a shop (the menu: {', '.join(t for t, _ in rows)})")
+        self.body.click(row[1])
+        for _ in range(10):
+            self.body.wait(0.6)
+            if self.look().shop_open:
+                return Result(True, f"{name}'s shop is open")
+        return Result(False, f"clicked Trade {name}, but no shop opened")
+
+    def _shop_items(self) -> dict[str, tuple[int, int]]:
+        """What's for sale, by hovering the shop's slots ("Value Bronze pickaxe")."""
+        lay, out = self.eyes.layout, {}
+        for i in range(lay.shop_cols * lay.shop_rows):
+            x = lay.viewport.x + lay.shop_origin[0] + (i % lay.shop_cols) * lay.shop_step[0] + 16
+            y = lay.viewport.y + lay.shop_origin[1] + (i // lay.shop_cols) * lay.shop_step[1] + 16
+            h = self.body.read_hover((x, y))
+            if h is None:
+                break
+            out[as_name(h.name)] = (x, y)
+        return out
+
+    def _in_amounts(self, where, verb: str, quantity: int) -> int:
+        """Buy or sell `quantity` with the menu's 1/5/10/50 options; `where` gives the point to
+        right-click each time (an item moves as slots empty). Returns how many it asked for."""
+        done = 0
+        while done < quantity:
+            pt = where()
+            if pt is None:
+                break
+            rows = self.body.open_menu(pt)
+            options = [(int(t.split(" ")[1]), at) for t, at in rows
+                       if t.startswith(verb + " ") and t.split(" ")[1].isdigit()]
+            fit = [(n, at) for n, at in options if n <= quantity - done]
+            if not fit:
+                self.body.close_menu()
+                break
+            n, at = max(fit)
+            self.body.click(at)
+            self.body.wait(0.6)
+            done += n
+        return done
+
+    def buy(self, item: str, quantity: int = 1) -> Result:
+        """Buy from the open shop."""
+        item, before = as_name(item), self.view
+        if not self.look().shop_open:
+            return Result(False, "no shop is open: trade with a shopkeeper first")
+        stock = self._shop_items()
+        if item not in stock:
+            return Result(False, f"the shop has no {item} (it sells: {', '.join(stock) or 'nothing'})")
+        self._in_amounts(lambda: stock[item], "Buy", int(quantity))
+        value = self.value_of(item)
+        return self._after(before, f"bought {item.replace('_', ' ')}" +
+                           (f" (worth about {value} coins each)" if value else ""), settle=0.3)
+
+    def sell(self, item: str, quantity: int = 1, sure: str = "") -> Result:
+        """Sell to the open shop. Shops pay little: anything worth over 1,000 coins needs sure=yes."""
+        item, before = as_name(item), self.view
+        now = self.look()
+        if not now.shop_open:
+            return Result(False, "no shop is open: trade with a shopkeeper first")
+        slots = now.slots_with(item)
+        if not slots:
+            return Result(False, f"no {item} in your inventory")
+        value = self.value_of(item)
+        if value and value > SELL_GUARD and str(sure).lower() not in ("yes", "true", "sure"):
+            return Result(False, f"{item.replace('_', ' ')} is worth about {value:,} coins and a shop "
+                                 "pays a fraction of that: the Grand Exchange is better. If you mean "
+                                 "it, sell with sure=yes")
+        def where():
+            left = self.look().slots_with(item)
+            return self.eyes.layout.slot(left[0]).center if left else None
+        self._in_amounts(where, "Sell", int(quantity))
+        return self._after(before, f"sold {item.replace('_', ' ')}", settle=0.3)
+
     # --- equipment ------------------------------------------------------------------------------
     def read_wearing(self) -> dict[str, str]:
         if hasattr(self.body, "read_equipment"):
@@ -585,7 +678,7 @@ class Actions:
 
 
 def _spec(action: str, description: str, /, **params: str) -> dict:
-    ints = {"slot", "seconds", "timeout"}
+    ints = {"slot", "seconds", "timeout", "quantity"}
     props = {p: {"type": "integer" if p in ints else "string", "description": d}
              for p, d in params.items()}
     return {"type": "function", "function": {
@@ -607,6 +700,14 @@ ACTIONS = [
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
     _spec("use", Actions.use.__doc__, item="An item in your inventory, e.g. tinderbox.",
           on="What to use it on: an item, a highlight or a name from your survey, e.g. logs, range, Fire."),
+    _spec("trade", Actions.trade.__doc__, name="The shopkeeper, e.g. Shop keeper."),
+    _spec("buy", Actions.buy.__doc__, item="What to buy.", quantity="How many."),
+    {"type": "function", "function": {
+        "name": "sell", "description": Actions.sell.__doc__,
+        "parameters": {"type": "object", "required": ["item", "quantity"], "properties": {
+            "item": {"type": "string", "description": "What to sell."},
+            "quantity": {"type": "integer", "description": "How many."},
+            "sure": {"type": "string", "description": "yes, to sell something valuable anyway."}}}}},
     _spec("equip", Actions.equip.__doc__, item="An item in your inventory, e.g. bronze sword."),
     _spec("unequip", Actions.unequip.__doc__, item="Something you're wearing, e.g. wooden shield."),
     _spec("walk_to", Actions.walk_to.__doc__, place="A place name, e.g. draynor bank, grand exchange."),
@@ -630,7 +731,7 @@ def do(actions: Actions, name: str, args: dict) -> Result:
     the brain hears about, not a crash."""
     if name not in {a["function"]["name"] for a in ACTIONS}:
         return Result(False, f"there's no action called {name}")
-    args = {k: int(v) if k in ("slot", "seconds", "timeout") and str(v).strip().isdigit() else v
+    args = {k: int(v) if k in ("slot", "seconds", "timeout", "quantity") and str(v).strip().isdigit() else v
             for k, v in args.items()}                  # models often send "5" for 5
     try:
         return getattr(actions, name)(**args)

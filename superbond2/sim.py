@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .colors import Registry
-from .eyes import BANK_FILL, FRAME_FILE
+from .eyes import BANK_FILL, FRAME_FILE, SHOP_FILL
 from .layout import CANVAS_H, CANVAS_W, SLOTS, Layout, Rect
 
 PANEL = (62, 53, 41)             # the stone interface
@@ -41,6 +41,8 @@ WEARABLE = {"bronze_sword": ("weapon", "Wield"), "bronze_scimitar": ("weapon", "
 LIGHT = {"logs": 40, "oak_logs": 60, "willow_logs": 90}
 COOK = {"raw_shrimps": ("shrimps", 30), "raw_anchovies": ("anchovies", 30),
         "raw_trout": ("trout", 70), "raw_beef": ("cooked_meat", 30)}
+VALUE = {"rune_pickaxe": 32000, "bronze_pickaxe": 1, "bronze_axe": 16, "cowhide": 1,
+         "oak_logs": 20, "logs": 4}          # the game's item values, for selling (some)
 FOOD = {"trout": 7, "shrimps": 3, "lobster": 12, "cooked_meat": 3}
 
 
@@ -66,6 +68,7 @@ class Thing:
     at: tuple | None = None      # where in the world it is (x, y, floor); None: always in view
     goes: tuple | None = None    # stairs, ladders, trapdoors: where climbing takes you
     needs: tuple = ()            # a monster that can't be killed without these items
+    shop: dict | None = None     # a shopkeeper: item -> price
 
     def here(self, t: float) -> bool:
         return t >= self.gone_until
@@ -115,6 +118,8 @@ class SimGame:
         self.equipment: dict[str, str] = {}   # slot -> item
         self.using: int | None = None          # "Use" picked on this slot: the next click is what on
         self.cooking: str | None = None        # raw food waiting on "how many?" (space: all)
+        self.coins = 0                         # the stack in the "coins" slot
+        self.shop_open: Thing | None = None
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
         self.path: list = []                                # the tiles on the way there
@@ -130,6 +135,11 @@ class SimGame:
         return thing
 
     def give(self, item: str, n: int = 1, tool: bool = False) -> None:
+        if item == "coins":                    # coins stack in one slot
+            self.coins += n
+            if "coins" not in self.inventory:
+                self._put("coins")
+            return
         if tool:
             self.tools.add(item)
         for _ in range(n):
@@ -205,7 +215,7 @@ class SimGame:
             self.dialogue = None
             return
         if k == "esc":
-            self.doing, self.bank_open = None, False
+            self.doing, self.bank_open, self.shop_open = None, False, None
 
     def advance(self, seconds: float) -> None:
         """Let the world run: gathering, fighting, respawns, one tick at a time."""
@@ -237,6 +247,10 @@ class SimGame:
 
     def hover(self, pt):
         from .text import Hover
+        shop_i = self._shop_slot_at(pt) if self.screen == "game" else None
+        if shop_i is not None:
+            label = list(self.shop_open.shop)[shop_i].replace("_", " ").capitalize()
+            return Hover(f"Value {label}", label, "item")
         slot = self.layout.slot_at(pt) if self.screen == "game" else None
         if slot is not None and self.inventory[slot] is not None:     # an item: "Use Garlic"
             label = self.inventory[slot].replace("_", " ").capitalize()
@@ -247,7 +261,26 @@ class SimGame:
         return Hover(f"{thing.verb} {thing.label}", thing.label, HOVER_KIND.get(thing.kind, "object"))
 
     def open_menu(self, pt, shift: bool = False) -> list:
+        lay = self.layout
+
+        def rows_for(options):
+            return [(o, (int(pt[0]), int(pt[1]) + lay.menu_header + lay.menu_row * i + lay.menu_row // 2))
+                    for i, o in enumerate(options)]
+        shop_i = self._shop_slot_at(pt)
+        if shop_i is not None:
+            item = list(self.shop_open.shop)[shop_i]
+            label = item.replace("_", " ").capitalize()
+            rows = rows_for([f"Value {label}"] + [f"Buy {n} {label}" for n in (1, 5, 10, 50)] +
+                            [f"Examine {label}"])
+            self.menu_open = (("shop", item), rows)
+            return rows
         slot = self.layout.slot_at(pt) if self._tab == "inventory" else None
+        if slot is not None and self.shop_open is not None and self.inventory[slot] is not None:
+            label = self.inventory[slot].replace("_", " ").capitalize()
+            rows = rows_for([f"Value {label}"] + [f"Sell {n} {label}" for n in (1, 5, 10, 50)] +
+                            [f"Examine {label}"])
+            self.menu_open = (("sell", slot), rows)
+            return rows
         if slot is not None and self.inventory[slot] is not None:
             item = self.inventory[slot]
             label = item.replace("_", " ").capitalize()
@@ -264,6 +297,8 @@ class SimGame:
         if thing is not None:
             options = [f"{thing.verb} {thing.label}"] + [f"{o} {thing.label}" for o in thing.options] + \
                 ["Walk here", f"Examine {thing.label}", "Cancel"]
+            if thing.shop:
+                options.insert(1, f"Trade {thing.label}")
             if shift and HOVER_KIND.get(thing.kind) == "object":
                 options.insert(1, "Unmark object" if thing.marked else "Mark object")
         lay = self.layout
@@ -337,6 +372,8 @@ class SimGame:
                 self._put(step[1])
             elif step[0] == "flag":
                 self.flags.add(step[1])
+            elif step[0] == "take" and step[1] == "coins":
+                self._pay(step[2] if len(step) > 2 else 1)
             elif step[0] == "take":
                 if step[1] in self.inventory:
                     self.inventory[self.inventory.index(step[1])] = None
@@ -415,6 +452,11 @@ class SimGame:
         thing, rows = self.menu_open
         self.menu_open = None
         option = next((o for o, at in rows if abs(at[1] - pt[1]) <= 7 and abs(at[0] - pt[0]) <= 100), None)
+        if isinstance(thing, tuple) and thing[0] in ("shop", "sell"):
+            words = (option or "").split(" ")
+            if len(words) > 1 and words[0] in ("Buy", "Sell") and words[1].isdigit():
+                (self._buy if words[0] == "Buy" else self._sell)(thing[1], int(words[1]))
+            return
         if isinstance(thing, tuple) and thing[0] == "slot":     # an item's menu
             if option == "Use" or (option and option.startswith("Use ")):
                 self.using = thing[1]
@@ -431,6 +473,8 @@ class SimGame:
             thing.marked = False
         elif option.startswith(thing.verb):
             self._click_thing(thing)
+        elif option.startswith("Trade") and thing.shop:
+            self.shop_open, self.doing = thing, None
         elif option.split(" ")[0] in thing.options:
             self._use(thing, option.split(" ")[0])
 
@@ -470,6 +514,45 @@ class SimGame:
         elif item in FOOD:
             self.inventory[i] = None
             self.hp = min(self.max_hp, self.hp + FOOD[item])
+
+    def _pay(self, n: int) -> bool:
+        if self.coins < n:
+            return False
+        self.coins -= n
+        if self.coins == 0 and "coins" in self.inventory:
+            self.inventory[self.inventory.index("coins")] = None
+        return True
+
+    # --- shops ------------------------------------------------------------------------------
+    def shop_slot(self, i: int) -> Rect:
+        lay = self.layout
+        x = lay.viewport.x + lay.shop_origin[0] + (i % lay.shop_cols) * lay.shop_step[0]
+        y = lay.viewport.y + lay.shop_origin[1] + (i // lay.shop_cols) * lay.shop_step[1]
+        return Rect(x, y, 32, 32)
+
+    def _shop_slot_at(self, pt) -> int | None:
+        if self.shop_open is None:
+            return None
+        for i in range(len(self.shop_open.shop)):
+            if self.shop_slot(i).contains(pt):
+                return i
+        return None
+
+    def _buy(self, item: str, n: int) -> None:
+        price = self.shop_open.shop[item]
+        for _ in range(n):
+            if None not in self.inventory or not self._pay(price):
+                return
+            self._put(item)
+
+    def _sell(self, slot: int, n: int) -> None:
+        item = self.inventory[slot]
+        price = max(1, int(self.shop_open.shop.get(item, VALUE.get(item, 2)) * 0.4))
+        for _ in range(n):
+            if item not in self.inventory:
+                return
+            self.inventory[self.inventory.index(item)] = None
+            self.give("coins", price)
 
     def _combine(self, first, target) -> None:
         pair = {first, target}
@@ -602,7 +685,12 @@ class SimGame:
         img[pts[:, 1], pts[:, 0]] = pts[:, 2:]
         vp = self.layout.viewport
         img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = GRASS
-        if self.bank_open:                           # the bank window covers the 3D view
+        if self.shop_open is not None:
+            img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = SHOP_FILL
+            for i in range(len(self.shop_open.shop)):
+                r = self.shop_slot(i)
+                img[r.y + 6:r.y + r.h - 6, r.x + 6:r.x + r.w - 6] = SPRITE
+        elif self.bank_open:                         # the bank window covers the 3D view
             img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = BANK_FILL
         else:
             for thing in self.things:

@@ -73,6 +73,7 @@ class View:
     hp: float | None = None             # 0..1 from the health bar; None when it isn't drawn
     busy: bool | None = None            # the player moved since the last look; None on the first
     bank_open: bool = False             # the bank's window covers the 3D view
+    shop_open: bool = False             # a shop's window covers the 3D view
     dialogue_open: bool = False         # someone's talking, or there's a choice, in the chatbox
     dialogue: object = None             # what it says (text.Dialogue), read only when open
     position: tuple | None = None       # (x, y, floor) when something can tell
@@ -122,6 +123,7 @@ class Eyes:
         view.hp = self.hp(img)
         view.busy = self.busy(img)
         view.bank_open = self.bank_open(img)
+        view.shop_open = bool(color_mask(self.layout.viewport.crop(img), SHOP_FILL, 10).mean() >= 0.4)
         view.dialogue_open = self.dialogue_open(img)
         return view
 
@@ -233,6 +235,7 @@ def nearest_place(pos) -> tuple[str, int] | None:
 
 
 BANK_FILL = (73, 64, 52)        # the bank window's background (not measured yet)
+SHOP_FILL = (100, 88, 70)       # a shop window's background (not measured yet)
 
 
 def describe(view: View, registry: Registry | None = None) -> str:
@@ -253,6 +256,8 @@ def describe(view: View, registry: Registry | None = None) -> str:
                                     else "idle"))
     if view.bank_open:
         lines.append("The bank is open (bank puts things away; press esc closes it)")
+    if view.shop_open:
+        lines.append("A shop is open (buy and sell; press esc closes it)")
     d = view.dialogue
     if d is not None and d.options:
         lines.append("Dialogue: choose one: " + "; ".join(f"{i}. {t}" for i, (t, _) in
