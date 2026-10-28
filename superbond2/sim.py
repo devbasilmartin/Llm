@@ -49,6 +49,8 @@ class Thing:
     # npc: what they say. {node: [step, ...]}, starting at "start". A step is
     # ("say", who, text), ("choose", [(option, node), ...]), ("give", item) or ("flag", name).
     talk: dict | None = None
+    options: tuple = ()          # more right-click options: ("Climb-up", "Climb-down")
+    blocks: frozenset = frozenset()   # a closed door or gate: the tiles it shuts
 
     def here(self, t: float) -> bool:
         return t >= self.gone_until
@@ -95,6 +97,7 @@ class SimGame:
         self.flags: set[str] = set()                        # what conversations have set
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
+        self.path: list = []                                # the tiles on the way there
         self.walls: set[tuple[int, int]] = set()            # tiles nobody can walk through
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
@@ -124,6 +127,7 @@ class SimGame:
             self.doing, self.bank_open = None, False
             self.walk_to = (self.pos[0] + round(dx / lay.minimap_tile),
                             self.pos[1] - round(dy / lay.minimap_tile))
+            self.path = self._route(tuple(self.pos[:2]), self.walk_to)
             return
         if self.bank_open:                  # with quantity "All": a slot banks all of that item
             slot = self.layout.slot_at(pt)
@@ -196,7 +200,8 @@ class SimGame:
         thing = self._under(pt)
         options = ["Walk here", "Cancel"]
         if thing is not None:
-            options = [f"{thing.verb} {thing.label}", "Walk here", f"Examine {thing.label}", "Cancel"]
+            options = [f"{thing.verb} {thing.label}"] + [f"{o} {thing.label}" for o in thing.options] + \
+                ["Walk here", f"Examine {thing.label}", "Cancel"]
             if shift and HOVER_KIND.get(thing.kind) == "object":
                 options.insert(1, "Unmark object" if thing.marked else "Mark object")
         lay = self.layout
@@ -208,6 +213,51 @@ class SimGame:
     # --- dialogue -------------------------------------------------------------------------
     PARCHMENT = (194, 178, 145)          # the chatbox's background while someone talks
     LINE = 16                            # pixels per line of dialogue text
+
+    def _route(self, start, goal, reach: int = 40) -> list:
+        """The way the game walks you: around walls, to the clicked tile, or as close to it as
+        it can get (searching a box `reach` tiles around where you stand)."""
+        from collections import deque
+        sx, sy = start
+        came = {start: None}
+        todo = deque([start])
+        best = start
+        def far(t):
+            return max(abs(t[0] - goal[0]), abs(t[1] - goal[1]))
+        while todo:
+            t = todo.popleft()
+            if far(t) < far(best):
+                best = t
+            if t == goal:
+                break
+            for ddx in (-1, 0, 1):
+                for ddy in (-1, 0, 1):
+                    n = (t[0] + ddx, t[1] + ddy)
+                    if n in came or n in self.walls or abs(n[0] - sx) > reach or abs(n[1] - sy) > reach:
+                        continue
+                    if ddx and ddy and ((t[0] + ddx, t[1]) in self.walls or (t[0], t[1] + ddy) in self.walls):
+                        continue                            # no cutting corners through walls
+                    came[n] = t
+                    todo.append(n)
+        path = []
+        while best != start:
+            path.append(best)
+            best = came[best]
+        return path[::-1]
+
+    def _use(self, thing: Thing, option: str) -> None:
+        """Doors, gates, stairs and ladders."""
+        self.doing = None
+        if option == "Open":
+            self.walls -= thing.blocks
+            thing.verb = "Close"
+        elif option == "Close":
+            self.walls |= thing.blocks
+            thing.verb = "Open"
+        elif option in ("Climb-up", "Climb"):
+            self.pos[2] += 1
+        elif option == "Climb-down":
+            self.pos[2] = max(0, self.pos[2] - 1)
 
     def _talk(self, thing: Thing, node: str, i: int) -> None:
         """Run the conversation from (node, i): effects happen on the way, and it stops at the
@@ -294,6 +344,8 @@ class SimGame:
             thing.marked = False
         elif option.startswith(thing.verb):
             self._click_thing(thing)
+        elif option.split(" ")[0] in thing.options:
+            self._use(thing, option.split(" ")[0])
 
     def type_text(self, text: str) -> None:
         if self.screen == "login" and self._field is not None:
@@ -333,6 +385,8 @@ class SimGame:
     def _click_thing(self, thing: Thing) -> None:
         if thing.kind == "bank":
             self.doing, self.bank_open = None, True
+        elif thing.kind == "static":
+            self._use(thing, thing.verb)
         elif thing.kind == "npc" and thing.talk:
             self.doing = None
             self._talk(thing, "start", 0)
@@ -345,14 +399,11 @@ class SimGame:
                 self._next_action = self.t + 4 * TICK
 
     def _tick(self) -> None:
-        if self.walk_to is not None:                        # a tile a tick, diagonals too
-            x, y = self.pos[0], self.pos[1]
-            tx, ty = self.walk_to
-            step = (x + (tx > x) - (tx < x), y + (ty > y) - (ty < y))
-            if step == (x, y) or step in self.walls:
-                self.walk_to = None                         # there, or a wall in the way
-            else:
-                self.pos[0], self.pos[1] = step
+        if self.walk_to is not None:                        # a tile a tick, along the route
+            if self.path:
+                self.pos[0], self.pos[1] = self.path.pop(0)
+            if not self.path:
+                self.walk_to = None
         thing = self.doing
         if thing is not None and not thing.here(self.t):
             thing = self.doing = None                    # someone else got it / it ran out

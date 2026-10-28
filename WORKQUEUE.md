@@ -17,8 +17,6 @@ Rules for unattended rounds:
 Built and tested on the simulated game; screen positions and colors the real client decides
 are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
 
-- [ ] **7. Doors, gates, stairs, ladders.** Through the right-click menu (Open, Climb-up,
-  Climb-down); the sim gets a door and a ladder between two floors.
 - [ ] **12. Vampyre Slayer in the sim.** A whole quest, end to end, as a test bed: talk to
   Morgan, get garlic, get a stake from Dr Harlow, the beer, the hammer, Draynor Manor, the fight.
 - [ ] **2. Where am I.** Position from a RuneLite coordinates overlay (OCR), and a named place
@@ -54,6 +52,9 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 ## Done
 
+- **7. Doors, gates, stairs, ladders**: `interact <thing> <option>` through the right-click
+  menu (highlights or survey names), an action and a routine step; the sim's doors block tiles
+  till opened, ladders change floors, and its walking now routes around walls like the game.
 - **6. `walk_to <place>`**: 17 named F2P places (places.yaml); compass north, then minimap
   clicks of up to 14 tiles, position read after each; stuck and other-floor cases reported.
   Works in the sim; on the real client it needs item 2 (the position readout).

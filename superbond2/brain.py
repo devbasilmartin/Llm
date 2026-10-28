@@ -61,7 +61,8 @@ highlights nearby and your inventory. Start from what's in front of you.
   there, highlighted or not: that's how you find new things in a new place. mark outlines an
   object you found, for good (it shows as `marked`). inspect reads what a highlight really is.
 - walk_to a named place (a bank, a town, a mine) to get around; it says if a wall or a
-  floor is in the way.
+  floor is in the way. interact opens doors and gates and climbs stairs and ladders
+  (interact Door Open, interact Ladder Climb-up); survey finds the ones that aren't highlighted.
 - talk_to someone, continue_dialogue to hear the rest, choose an option: that's how quests
   start and move on. What they say shows under Now, as Dialogue.
 - search_wiki and read_wiki look things up on the OSRS Wiki: what something is, where to

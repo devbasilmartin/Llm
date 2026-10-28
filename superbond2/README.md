@@ -283,7 +283,10 @@ compass (north up), then the minimap towards the place, up to 14 tiles at a time
 he stops, reads where he is, and goes again, until he's within 2 tiles. No progress three
 clicks running is reported as a wall or a door in the way; another floor needs stairs first.
 It needs to know where he is: in the sim that's the game; on the real client it's RuneLite's
-coordinates overlay, read from the screen (next in the queue). The minimap scale (4 pixels a
+coordinates overlay, read from the screen (next in the queue). `interact <thing> <option>` right-clicks
+something and picks an option: `interact Door Open`, `interact Ladder Climb-up`, anything its menu
+has; the thing is a highlight or a name from his last `survey`. In the sim, doors shut tiles
+till opened, ladders change the floor, and walking routes around walls like the game does. The minimap scale (4 pixels a
 tile) and the compass's place are guesses until checked.
 
 ### Discord

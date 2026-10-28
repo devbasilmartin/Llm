@@ -326,12 +326,46 @@ class Actions:
             if stuck >= 3:
                 self.look()
                 return Result(False, f"stuck at {here[0]}, {here[1]}, {max(abs(tx - here[0]), abs(ty - here[1]))} "
-                                     f"tiles from {name}: a wall or a door in the way?")
+                                     f"tiles from {name}: a wall or a door in the way? (survey for a "
+                                     "door or gate, interact it with Open, and walk on)")
         self.look()
         if max(abs(tx - here[0]), abs(ty - here[1])) > ARRIVED:
             return Result(False, f"gave up walking to {name} after {steps} clicks")
         moved = max(abs(here[0] - start[0]), abs(here[1] - start[1]))
         return Result(True, f"walked to {name} ({moved} tiles)")
+
+    def interact(self, target: str, option: str = "") -> Result:
+        """Right-click something and pick an option: Open a door or gate, Climb-up or
+        Climb-down stairs and ladders, and anything else its menu offers. `target` is a
+        highlight name, or a name from your last survey (Door, Ladder, Staircase)."""
+        if not option:                                  # a routine step: "Door Open"
+            target, _, option = str(target).strip().rpartition(" ")
+        before, now = self.view, self.look()
+        pt = None
+        hit = now.nearest(as_name(target))
+        if hit is not None:
+            pt = hit.center
+        else:
+            want = str(target).strip().lower()
+            for name, spots in getattr(self, "surveyed", {}).items():
+                if name.lower() == want:
+                    pt = spots[0][0]
+                    break
+        if pt is None:
+            return Result(False, f"no {target} in sight; survey to find things that aren't highlighted")
+        rows = self.body.open_menu(pt)
+        want = str(option).strip().lower()
+        row = next(((t, at) for t, at in rows if t.lower().startswith(want)), None)
+        if row is None:
+            self.body.close_menu()
+            return Result(False, f"{target}'s menu has no {option!r}: {', '.join(t for t, _ in rows)}")
+        floor = self.body.position()[2] if hasattr(self.body, "position") and self.body.position() else None
+        self.body.click(row[1])
+        result = self._after(before, f"chose {row[0]}", settle=1.8)
+        now_floor = self.body.position()[2] if floor is not None and self.body.position() else None
+        if floor is not None and now_floor != floor:
+            result.said += f"; you're on floor {now_floor} now"
+        return result
 
     # --- talking ------------------------------------------------------------------------------
     def _said(self) -> str:
@@ -464,6 +498,8 @@ ACTIONS = [
     _spec("mark", Actions.mark.__doc__, name="A name from your last survey, e.g. Willow tree."),
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
     _spec("walk_to", Actions.walk_to.__doc__, place="A place name, e.g. draynor bank, grand exchange."),
+    _spec("interact", Actions.interact.__doc__, target="A highlight name, or a name from your survey, e.g. Door.",
+          option="The menu option, e.g. Open, Climb-up, Climb-down."),
     _spec("talk_to", Actions.talk_to.__doc__, name="A highlight name or the person's name, e.g. Morgan."),
     {"type": "function", "function": {
         "name": "continue_dialogue", "description": Actions.continue_dialogue.__doc__,
