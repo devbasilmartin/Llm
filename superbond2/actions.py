@@ -61,7 +61,7 @@ def not_here(name: str, seen: list[str]) -> str:
     """'no X in sight', with what is in sight and, if there is one, a place named after X."""
     hint = places_for(name)
     return (f"no {name} in sight (I can see: {', '.join(seen) or 'nothing'})" +
-            (f". There's a place by that name: walk_to {hint[0]}" if hint else
+            (f". There's a place by that name. Try: walk_to(place=\"{hint[0]}\")" if hint else
              ". Not everything nearby shows: survey, or walk closer"))
 
 

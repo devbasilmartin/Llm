@@ -372,7 +372,7 @@ def test_the_same_failure_gets_a_hint_then_a_refusal(game, memory):
     b = two(game, memory, fast, slow)
     b.journaled = 10 ** 6
     results = [b.turn().result for _ in range(2 * REFUSE_AFTER + 1)]
-    assert "There's a place by that name: walk_to morgan's house" in results[0]
+    assert "There's a place by that name. Try: walk_to(place=\"morgan's house\")" in results[0]
     assert results[1] == "you're already at lumbridge castle"
     assert results[2 * (HINT_AFTER - 1)].endswith("try something else)")
     assert results[2 * REFUSE_AFTER].startswith(f"not again: talk_to has failed {REFUSE_AFTER} times")
