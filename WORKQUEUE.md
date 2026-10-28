@@ -14,9 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Learning track 2: a tiny GPT.** A character-level GPT from scratch in numpy, readable
-  first: tokenizer, attention, MLP, training loop, sampling, with comments that teach. Done
-  when: it trains a little on the CPU and samples fake wiki text.
 - [ ] **Learning track 3: a guide.** `learn/README.md` explaining each part in plain words,
   for the owner to read on a phone.
 
@@ -29,6 +26,10 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Learning track 2** (9509c1c): `learn/gpt.py`, a character-level GPT in numpy with the
+  backward pass by hand; every gradient checked numerically. On 1,500 wiki pages (2.2 MB),
+  122k numbers, 3,000 steps in 6 minutes on a 4-core cloud CPU: loss 4.9 (guessing) -> about
+  1.7, writing "...players damage. It is the statack that and by anots..."
 - **Learning track 1**: `python -m learn.fetch_wiki` gets articles 50 per request (polite:
   the wiki client's User-Agent, 1 request/s, a week's cache) as plain text, skipping stubs,
   lists and interface copies; tested on a fake API and on 20 real pages.

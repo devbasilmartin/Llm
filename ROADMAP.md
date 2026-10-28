@@ -93,7 +93,7 @@ bottom.
 
 ### Learning track (whenever)
 - [x] Fetch the OSRS wiki politely and clean it into plain text (`python -m learn.fetch_wiki`)
-- [ ] A readable character-level GPT: tokenizer, attention, MLP, training loop, sampling
-- [ ] Train it on the CPU; read its fake wiki pages
+- [x] A readable character-level GPT: tokenizer, attention, MLP, training loop, sampling (`learn/gpt.py`)
+- [x] Train it on the CPU; read its fake wiki pages (first run: 6 minutes, loss about 1.7)
 
 The unattended work queue is [WORKQUEUE.md](WORKQUEUE.md).
