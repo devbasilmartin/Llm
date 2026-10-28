@@ -19,7 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **10. Quest Helper.** Read its step text and follow its `quest_target` highlights.
 - [ ] **16. The Grand Exchange.** Buy and sell with wiki prices and guard rails (no selling
   far under price, no buying far over).
 - [ ] **17. Smarter combat.** Targets by level, loot rules, burying bones, attack styles.
@@ -46,11 +45,16 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   and does its menu say "Dismiss"?
 - The Quest tab open: a screenshot of it (no name shows), to place the quest-points line and
   the list, and check the colors (red, yellow, green). Long lists scroll: only what's in view is read.
+- Quest Helper on, with a quest started: where its overlay sits and what color its text is (a
+  screenshot of the top left of the game view; crop your name if it shows).
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **10. Quest Helper**: its overlay's step text read into his prompt ("Quest Helper: ..."), and
+  its quest_dialog / quest_target highlights explained when on screen; the sim's Vampyre
+  Slayer has a Quest Helper that follows his progress.
 - **11. Quest points and the quest log**: read from the Quest tab with the levels; a Quest
   points line (with Dragon Slayer's 32) in his prompt; a finished quest is told, posted 🏆,
   logged and in the daily summary.

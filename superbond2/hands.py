@@ -58,6 +58,9 @@ class SimBody:
     def read_quests(self):
         return self.game.read_quests()
 
+    def read_quest_helper(self):
+        return self.game.read_quest_helper()
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -159,6 +162,10 @@ class RealBody:
         finally:
             self.click(tabs["inventory"])
             time.sleep(0.3)
+
+    def read_quest_helper(self):
+        """Quest Helper's overlay text, if it's showing."""
+        return self.reader.quest_helper(self.screen.grab())
 
     def read_quests(self):
         """Open the Quest tab, read the points and the quests in view, go back."""

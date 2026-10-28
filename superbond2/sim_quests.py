@@ -51,11 +51,28 @@ COUNT_TALK = {
 }
 
 
+def vampyre_helper(g: SimGame) -> str:
+    """What Quest Helper would say next, from how far he's got."""
+    if "vampyre slayer done" in g.flags:
+        return "Vampyre Slayer: quest complete!"
+    if "vampyre slayer started" not in g.flags:
+        return "Vampyre Slayer: talk to Morgan in Draynor Village."
+    if "garlic" not in g.inventory:
+        return "Vampyre Slayer: get the garlic from the cupboard upstairs in Morgan's house."
+    if "stake" not in g.inventory:
+        return ("Vampyre Slayer: buy a beer from the bartender in the Blue Moon Inn, Varrock, and give "
+                "it to Dr Harlow.")
+    if "hammer" not in g.inventory:
+        return "Vampyre Slayer: pick up a hammer (there's one near the Blue Moon Inn)."
+    return "Vampyre Slayer: go down to the basement of Draynor Manor and kill Count Draynor."
+
+
 def vampyre_world(seed: int = 1) -> SimGame:
     """Lumbridge to start, with Vampyre Slayer laid out across Draynor and Varrock."""
     from .sim import lumbridge
     g = lumbridge(seed)
     g.give("coins", 10)
+    g.helper = vampyre_helper
     g.add("quest_dialog", "npc", 150, 120, 16, 30, label="Morgan", verb="Talk-to", talk=MORGAN_TALK,
           at=MORGAN)
     g.add("door", "static", 300, 100, 24, 40, label="Staircase", verb="Climb-up", marked=False,

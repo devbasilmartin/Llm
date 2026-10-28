@@ -46,3 +46,30 @@ def test_a_finished_quest_is_celebrated(tmp_path):
     assert "Quest points: 3 (Dragon Slayer needs 32); done: vampyre slayer" in model.prompts[1]
     assert "🏆 quest complete: vampyre slayer!" in model.prompts[1]
     assert "🏆 Quests: vampyre slayer (3 quest points)." in daily_summary(memory, time.strftime("%Y-%m-%d"))
+
+
+# --- Quest Helper -------------------------------------------------------------------------------
+def test_reading_quest_helpers_overlay():
+    words = iter(["Vampyre Slayer", "Talk to Morgan in Draynor Village."])
+    reader = Reader(ocr=lambda pic: next(words))
+    img = np.zeros((503, 765, 3), np.uint8)
+    r = reader.layout.quest_helper_text
+    img[r.y + 2:r.y + 10, r.x + 4:r.x + 100] = (255, 255, 255)
+    img[r.y + 16:r.y + 24, r.x + 4:r.x + 200] = (255, 255, 255)
+    assert reader.quest_helper(img) == "Vampyre Slayer Talk to Morgan in Draynor Village."
+    assert Reader(ocr=lambda pic: "x").quest_helper(np.zeros((503, 765, 3), np.uint8)) is None
+
+
+def test_quest_helper_guides_him_through_the_quest():
+    from superbond2.eyes import describe
+    game = vampyre_world()
+    act = Actions(SimBody(game), EYES)
+    act.walk_to("morgan's house")
+    text = describe(act.look())
+    assert "Quest Helper: Vampyre Slayer: talk to Morgan in Draynor Village." in text
+    assert "Quest Helper's highlights: quest_dialog = who Quest Helper wants you to talk to" in text
+    act.talk_to("quest_dialog")                          # straight from the highlight
+    act.continue_dialogue()
+    act.choose(1)
+    act.continue_dialogue()
+    assert "garlic from the cupboard upstairs" in describe(act.look())

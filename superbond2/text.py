@@ -151,6 +151,23 @@ class Reader:
             out[skill] = int(m[1])
         return out
 
+    def quest_helper(self, img: np.ndarray) -> str | None:
+        """Quest Helper's step text, line by line, or None when its overlay isn't there."""
+        box = self.layout.quest_helper_text
+        rows = _mask(box.crop(img), WHITE, TEXT_TOL).any(axis=1)
+        lines, y = [], 0
+        while y < len(rows):
+            if rows[y]:
+                end = y
+                while end < len(rows) and rows[end]:
+                    end += 1
+                text = self.read_ink(img, Rect(box.x, box.y + y - 1, box.w, end - y + 2), WHITE, TEXT_TOL)
+                if text:
+                    lines.append(text)
+                y = end
+            y += 1
+        return " ".join(lines) or None
+
     QUEST_COLORS = {"done": (0, 255, 0), "started": (255, 255, 0), "not started": (255, 0, 0)}
 
     def quests(self, img: np.ndarray) -> dict | None:

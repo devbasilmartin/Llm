@@ -120,6 +120,7 @@ class SimGame:
         self.cooking: str | None = None        # raw food waiting on "how many?" (space: all)
         self.coins = 0                         # the stack in the "coins" slot
         self.shop_open: Thing | None = None
+        self.helper = None                     # Quest Helper: game -> its step text, or None
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
         self.path: list = []                                # the tiles on the way there
@@ -582,6 +583,9 @@ class SimGame:
         where = WEARABLE[item][0]
         self.inventory[i] = self.equipment.get(where)       # what was worn goes in the bag
         self.equipment[where] = item
+
+    def read_quest_helper(self) -> str | None:
+        return self.helper(self) if self.helper else None
 
     def read_quests(self) -> dict:
         """Quests by their flags: "<quest> started" and "<quest> done"."""

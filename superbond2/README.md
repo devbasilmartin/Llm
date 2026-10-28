@@ -269,6 +269,13 @@ also lists the RuneLite settings and plugins that help him (and the ones to be c
 The hover text position and the menu rows aren't measured on the real client yet:
 `python -m superbond2 hover` reads what's under the mouse and saves the picture.
 
+### Quest Helper
+
+With RuneLite's Quest Helper on, its overlay's step text goes into his prompt (`Quest Helper:
+Vampyre Slayer: talk to Morgan in Draynor Village.`), and its highlights are explained when
+they're on screen: `quest_dialog` is who it wants him to talk to, `quest_target` what to use or
+go to. The overlay's place and text color are guesses until checked.
+
 ### Dialogue
 
 When someone talks, the chatbox shows their name in dark red, their words in black and

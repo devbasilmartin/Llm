@@ -62,6 +62,8 @@ class Layout:
     shop_step: tuple[int, int] = (47, 47)
     shop_cols: int = 8
     shop_rows: int = 5
+    # Quest Helper's overlay: the quest and its current step, white text (a guess)
+    quest_helper_text: Rect = Rect(8, 48, 260, 64)
     # the Quest tab: "Quest Points: 12" at the top, then the list, colored by state (a guess)
     quest_points_text: Rect = Rect(553, 210, 180, 16)
     quest_list: Rect = Rect(553, 230, 170, 230)

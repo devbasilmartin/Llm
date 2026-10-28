@@ -77,6 +77,7 @@ class View:
     dialogue_open: bool = False         # someone's talking, or there's a choice, in the chatbox
     dialogue: object = None             # what it says (text.Dialogue), read only when open
     position: tuple | None = None       # (x, y, floor) when something can tell
+    helper: str | None = None           # Quest Helper's current step, when it's on
 
     def nearest(self, name: str) -> Highlight | None:
         hits = [h for h in self.highlights if h.name == name]
@@ -249,6 +250,8 @@ def describe(view: View, registry: Registry | None = None) -> str:
         lines.append(f"Where: {x}, {y}" + (f", floor {floor}" if floor else "") +
                      (f" (at {place[0]})" if place and place[1] <= 3 else
                       f" (near {place[0]}, {place[1]} tiles)" if place and place[1] <= 30 else ""))
+    if view.helper:
+        lines.append(f"Quest Helper: {view.helper}")
     if view.hp is not None:
         lines.append(f"HP: {round(view.hp * 100)}%")
     if view.busy is not None:
@@ -281,6 +284,11 @@ def describe(view: View, registry: Registry | None = None) -> str:
                  for name in seen if name in meanings and name in VAGUE]
         if could:
             lines.append("Those highlights don't say which; each can be: " + "; ".join(could))
+        guide = {"quest_dialog": "who Quest Helper wants you to talk to",
+                 "quest_target": "what Quest Helper wants you to use or go to"}
+        shown = [f"{k} = {v}" for k, v in guide.items() if k in seen]
+        if shown:
+            lines.append("Quest Helper's highlights: " + "; ".join(shown))
     else:
         lines.append("Highlighted nearby: nothing")
     return "\n".join(lines)

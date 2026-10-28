@@ -104,6 +104,8 @@ class Actions:
         self._name_untagged(self.view)
         if hasattr(self.body, "position"):
             self.view.position = self.body.position()
+        if hasattr(self.body, "read_quest_helper"):
+            self.view.helper = self.body.read_quest_helper()
         if self.view.dialogue_open and hasattr(self.body, "read_dialogue"):
             self.view.dialogue = self.body.read_dialogue()
         if last is not None and died(last, self.view):
