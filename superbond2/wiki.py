@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Callable
 
 API = "https://oldschool.runescape.wiki/api.php"
+PRICES = "https://prices.runescape.wiki/api/v1/osrs"     # the wiki's live Grand Exchange prices
 USER_AGENT = "superbond2/0.1 (a learning project; https://github.com/devbasilmartin/Llm)"
 CACHE_DAYS = 7
 MAX_TEXT = 1800             # characters of a page that go into his prompt
@@ -140,7 +141,9 @@ class Wiki:
         self._last = -1e9
 
     def _api(self, **params) -> dict:
-        url = API + "?" + urllib.parse.urlencode({**params, "format": "json"})
+        return self._fetch(API + "?" + urllib.parse.urlencode({**params, "format": "json"}))
+
+    def _fetch(self, url: str) -> dict:
         path = self.cache / (hashlib.sha1(url.encode()).hexdigest()[:20] + ".json") if self.cache else None
         if path and path.exists() and time.time() - path.stat().st_mtime < CACHE_DAYS * 86400:
             return json.loads(path.read_text())
@@ -199,3 +202,19 @@ class Wiki:
         raw = (data.get("parse") or {}).get("wikitext", {}).get("*", "")
         m = re.search(r"\|\s*value\d*\s*=\s*([\d,]+)", raw)
         return int(m[1].replace(",", "")) if m else None
+
+    def ge_price(self, item: str) -> int | None:
+        """The real game's latest Grand Exchange price (the middle of the last buy and sell),
+        or None. A private server's market can differ."""
+        name = " ".join(str(item).replace("_", " ").split()).lower()
+        try:
+            mapping = self._fetch(f"{PRICES}/mapping")
+            entry = next((m for m in mapping if str(m.get("name", "")).lower() == name), None)
+            if entry is None:
+                return None
+            latest = self._fetch(f"{PRICES}/latest?id={entry['id']}")
+        except WikiError:
+            return None
+        p = (latest.get("data") or {}).get(str(entry["id"])) or {}
+        prices = [v for v in (p.get("high"), p.get("low")) if v]
+        return round(sum(prices) / len(prices)) if prices else None

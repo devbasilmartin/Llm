@@ -61,6 +61,12 @@ class SimBody:
     def read_quest_helper(self):
         return self.game.read_quest_helper()
 
+    def ge_offer(self, kind, item, quantity, price, slot_pt=None):
+        return self.game.ge_offer(kind, item, quantity, price)
+
+    def ge_collect(self):
+        self.game.ge_collect()
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -162,6 +168,46 @@ class RealBody:
         finally:
             self.click(tabs["inventory"])
             time.sleep(0.3)
+
+    # --- the Grand Exchange: the clicks and the typing it needs (all positions guessed) ------
+    def _type_checked(self, text: str) -> None:
+        """Type into the GE's own boxes only: an item name or a number, nothing that could end
+        up as a chat message (the window is checked open before this is called)."""
+        import re
+        if not re.fullmatch(r"[A-Za-z0-9 '()-]{1,40}", text):
+            raise ValueError(f"won't type {text!r}")
+        self.check_kill_switch()
+        self.gui.write(text, interval=0.05)
+
+    def ge_offer(self, kind, item, quantity, price, slot_pt=None):
+        """Buy: the Buy button, search for the item, its first result. Sell: the Sell button
+        and the item in the inventory. Then quantity and price through their "..." boxes,
+        and Confirm. Returns None (whether it filled shows when collecting)."""
+        from .layout import Layout
+        lay = Layout()
+        self.click(lay.ge_buy if kind == "buy" else lay.ge_sell)
+        time.sleep(0.8)
+        if kind == "buy":
+            self._type_checked(item.replace("_", " "))
+            time.sleep(1.2)
+            self.click(lay.ge_first_result)
+        else:
+            self.click(slot_pt)
+        time.sleep(0.8)
+        for button, n in ((lay.ge_quantity, quantity), (lay.ge_price, price)):
+            self.click(button)
+            time.sleep(0.8)
+            self._type_checked(str(int(n)))
+            self.gui.press("enter")
+            time.sleep(0.6)
+        self.click(lay.ge_confirm)
+        time.sleep(0.8)
+        return None
+
+    def ge_collect(self):
+        from .layout import Layout
+        self.click(Layout().ge_collect)
+        time.sleep(0.8)
 
     def read_quest_helper(self):
         """Quest Helper's overlay text, if it's showing."""

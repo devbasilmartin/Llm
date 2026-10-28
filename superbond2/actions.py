@@ -91,6 +91,7 @@ class Actions:
         self._untagged: dict[int, str] = {}  # slot -> the name of the untagged item there
         self.wearing: dict[str, str] = {}    # equipment slot -> item, as last read
         self.value_of = lambda item: None    # an item's value (the brain gives it the wiki's)
+        self.ge_price_of = lambda item: None  # the real game's GE price (the wiki's), if known
         self.look()
 
     def look(self) -> View:
@@ -442,6 +443,82 @@ class Actions:
         self._in_amounts(where, "Sell", int(quantity))
         return self._after(before, f"sold {item.replace('_', ' ')}", settle=0.3)
 
+    # --- the Grand Exchange ---------------------------------------------------------------------
+    def _ge(self) -> Result | None:
+        """Open the Grand Exchange through a clerk, if it isn't open; None when it's open."""
+        if self.look().ge_open:
+            return None
+        now = self.view
+        for h in sorted(now.highlights, key=lambda h: h.distance):
+            rows = self.body.open_menu(h.center)
+            row = next(((t, at) for t, at in rows if t.lower().startswith("exchange")), None)
+            if row is None:
+                self.body.close_menu()
+                continue
+            self.body.click(row[1])
+            for _ in range(10):
+                self.body.wait(0.6)
+                if self.look().ge_open:
+                    return None
+        return Result(False, "no Grand Exchange clerk in sight (walk_to grand exchange first)")
+
+    def _price_check(self, kind: str, item: str, price: int, sure: str) -> str | None:
+        if str(sure).lower() in ("yes", "true", "sure"):
+            return None
+        value, ge = self.value_of(item), self.ge_price_of(item)
+        name = item.replace("_", " ")
+        if kind == "sell" and value and price < int(value * 0.6):
+            return (f"{price:,} each is under {name}'s high alchemy value ({int(value * 0.6):,}): "
+                    "alching would get more. If you mean it, sure=yes")
+        if ge and kind == "sell" and price < ge / 3:
+            return (f"{price:,} each is far under the going price (about {ge:,} in the real game; "
+                    "this server's may differ). If you mean it, sure=yes")
+        if ge and kind == "buy" and price > ge * 3:
+            return (f"{price:,} each is far over the going price (about {ge:,} in the real game; "
+                    "this server's may differ). If you mean it, sure=yes")
+        return None
+
+    def _ge_offer(self, kind: str, item: str, quantity, price, sure: str) -> Result:
+        item, quantity, price = as_name(item), int(quantity), int(price)
+        if quantity < 1 or price < 1:
+            return Result(False, "quantity and price must be at least 1")
+        why = self._price_check(kind, item, price, sure)
+        if why:
+            return Result(False, why)
+        failed = self._ge()
+        if failed:
+            return failed
+        slot_pt = None
+        if kind == "sell":
+            slots = self.view.slots_with(item)
+            if not slots:
+                return Result(False, f"no {item} in your inventory")
+            slot_pt = self.eyes.layout.slot(slots[0]).center
+        before = self.view
+        why = self.body.ge_offer(kind, item, quantity, price, slot_pt)
+        if why:
+            return Result(False, why)
+        return self._after(before, f"offered to {kind} {quantity} {item.replace('_', ' ')} at "
+                                   f"{price:,} each; ge_collect when it's done", settle=0.6)
+
+    def ge_buy(self, item: str, quantity: int, price: int, sure: str = "") -> Result:
+        """Offer to buy on the Grand Exchange. Prices far over the going rate need sure=yes."""
+        return self._ge_offer("buy", item, quantity, price, sure)
+
+    def ge_sell(self, item: str, quantity: int, price: int, sure: str = "") -> Result:
+        """Offer to sell on the Grand Exchange. Under high-alchemy value, or far under the going
+        rate, needs sure=yes."""
+        return self._ge_offer("sell", item, quantity, price, sure)
+
+    def ge_collect(self) -> Result:
+        """Collect what your Grand Exchange offers have bought or earned."""
+        failed = self._ge()
+        if failed:
+            return failed
+        before = self.view
+        self.body.ge_collect()
+        return self._after(before, "collected", settle=0.6)
+
     # --- equipment ------------------------------------------------------------------------------
     def read_wearing(self) -> dict[str, str]:
         if hasattr(self.body, "read_equipment"):
@@ -680,7 +757,7 @@ class Actions:
 
 
 def _spec(action: str, description: str, /, **params: str) -> dict:
-    ints = {"slot", "seconds", "timeout", "quantity"}
+    ints = {"slot", "seconds", "timeout", "quantity", "price"}
     props = {p: {"type": "integer" if p in ints else "string", "description": d}
              for p, d in params.items()}
     return {"type": "function", "function": {
@@ -710,6 +787,17 @@ ACTIONS = [
             "item": {"type": "string", "description": "What to sell."},
             "quantity": {"type": "integer", "description": "How many."},
             "sure": {"type": "string", "description": "yes, to sell something valuable anyway."}}}}},
+    *[{"type": "function", "function": {
+        "name": n, "description": getattr(Actions, n).__doc__,
+        "parameters": {"type": "object", "required": ["item", "quantity", "price"], "properties": {
+            "item": {"type": "string", "description": "The item."},
+            "quantity": {"type": "integer", "description": "How many."},
+            "price": {"type": "integer", "description": "Coins each."},
+            "sure": {"type": "string", "description": "yes, past the price guard."}}}}}
+      for n in ("ge_buy", "ge_sell")],
+    {"type": "function", "function": {
+        "name": "ge_collect", "description": Actions.ge_collect.__doc__,
+        "parameters": {"type": "object", "required": [], "properties": {}}}},
     _spec("equip", Actions.equip.__doc__, item="An item in your inventory, e.g. bronze sword."),
     _spec("unequip", Actions.unequip.__doc__, item="Something you're wearing, e.g. wooden shield."),
     _spec("walk_to", Actions.walk_to.__doc__, place="A place name, e.g. draynor bank, grand exchange."),
@@ -733,7 +821,7 @@ def do(actions: Actions, name: str, args: dict) -> Result:
     the brain hears about, not a crash."""
     if name not in {a["function"]["name"] for a in ACTIONS}:
         return Result(False, f"there's no action called {name}")
-    args = {k: int(v) if k in ("slot", "seconds", "timeout", "quantity") and str(v).strip().isdigit() else v
+    args = {k: int(v) if k in ("slot", "seconds", "timeout", "quantity", "price") and str(v).strip().isdigit() else v
             for k, v in args.items()}                  # models often send "5" for 5
     try:
         return getattr(actions, name)(**args)

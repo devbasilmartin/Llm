@@ -302,6 +302,13 @@ until measured.
 uses the menu's 1/5/10/50; `sell <item> <n>` sells, but anything the wiki says is worth over
 1,000 coins needs `sure=yes`: a shop pays a fraction of that, and the GE is better.
 
+**The Grand Exchange.** `ge_buy <item> <n> <price>`, `ge_sell ...` and `ge_collect`, through a
+clerk's Exchange option. Two guards, each passed with `sure=yes`: selling under the item's
+high-alchemy value (60% of its value; the "sell your pickaxe for 1 gp" scam fails here), and
+prices more than 3x off the wiki's live price, which is the real game's (this server's market
+may differ). The GE is the one place he types: only into its own boxes, only names and
+numbers. Its buttons' places are guesses until checked.
+
 ### Getting around
 
 `walk_to <place>` walks to a place in `places.yaml` (banks, towns, mines, Draynor Manor, the

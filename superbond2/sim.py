@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .colors import Registry
-from .eyes import BANK_FILL, FRAME_FILE, SHOP_FILL
+from .eyes import BANK_FILL, FRAME_FILE, GE_FILL, SHOP_FILL
 from .layout import CANVAS_H, CANVAS_W, SLOTS, Layout, Rect
 
 PANEL = (62, 53, 41)             # the stone interface
@@ -121,6 +121,9 @@ class SimGame:
         self.coins = 0                         # the stack in the "coins" slot
         self.shop_open: Thing | None = None
         self.helper = None                     # Quest Helper: game -> its step text, or None
+        self.ge_open = False
+        self.market: dict[str, int] = {}       # the GE's going prices
+        self.offers: list[dict] = []           # {kind, item, quantity, price, filled}
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
         self.path: list = []                                # the tiles on the way there
@@ -216,7 +219,7 @@ class SimGame:
             self.dialogue = None
             return
         if k == "esc":
-            self.doing, self.bank_open, self.shop_open = None, False, None
+            self.doing, self.bank_open, self.shop_open, self.ge_open = None, False, None, False
 
     def advance(self, seconds: float) -> None:
         """Let the world run: gathering, fighting, respawns, one tick at a time."""
@@ -476,6 +479,8 @@ class SimGame:
             thing.marked = False
         elif option.startswith(thing.verb):
             self._click_thing(thing)
+        elif option.startswith("Exchange") and "Exchange" in thing.options:
+            self.ge_open, self.doing = True, None
         elif option.startswith("Trade") and thing.shop:
             self.shop_open, self.doing = thing, None
         elif option.split(" ")[0] in thing.options:
@@ -556,6 +561,39 @@ class SimGame:
                 return
             self.inventory[self.inventory.index(item)] = None
             self.give("coins", price)
+
+    # --- the Grand Exchange ------------------------------------------------------------------
+    def ge_offer(self, kind: str, item: str, quantity: int, price: int) -> str | None:
+        """Put in an offer; it fills at once if the price meets the market's. None, or why not."""
+        if not self.ge_open:
+            return "the Grand Exchange isn't open"
+        if len([o for o in self.offers if not o["collected"]]) >= 3:
+            return "all 3 offer slots are in use: collect first"
+        if kind == "buy":
+            if not self._pay(quantity * price):
+                return "not enough coins"
+        else:
+            have = self.inventory.count(item)
+            if have < quantity:
+                return f"you only have {have}"
+            for _ in range(quantity):
+                self.inventory[self.inventory.index(item)] = None
+        market = self.market.get(item)
+        filled = market is not None and (price >= market if kind == "buy" else price <= market)
+        self.offers.append({"kind": kind, "item": item, "quantity": quantity, "price": price,
+                            "filled": filled, "collected": False})
+        return None
+
+    def ge_collect(self) -> None:
+        for o in self.offers:
+            if o["collected"] or not o["filled"]:
+                continue
+            o["collected"] = True
+            if o["kind"] == "buy":
+                for _ in range(o["quantity"]):
+                    self._put(o["item"])
+            else:
+                self.give("coins", o["quantity"] * o["price"])
 
     def _combine(self, first, target) -> None:
         pair = {first, target}
@@ -697,7 +735,9 @@ class SimGame:
         img[pts[:, 1], pts[:, 0]] = pts[:, 2:]
         vp = self.layout.viewport
         img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = GRASS
-        if self.shop_open is not None:
+        if self.ge_open:
+            img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = GE_FILL
+        elif self.shop_open is not None:
             img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = SHOP_FILL
             for i in range(len(self.shop_open.shop)):
                 r = self.shop_slot(i)

@@ -405,8 +405,9 @@ class Brain:
         self.levels_read = -LEVELS_EVERY            # the turn levels were last read
         self.still: tuple = (None, 0)               # the screen's signature, and turns unchanged
         self.slept = -10 ** 6                       # the turn he last slept on his notes
-        if wiki is not None:                        # shop sales are checked against the wiki
+        if wiki is not None:                        # sales are checked against the wiki
             actions.value_of = wiki.value
+            actions.ge_price_of = wiki.ge_price
         self.session, self.character = session, character     # to log back in if dropped
         self.accounts = accounts or ([character] if character else [])   # ones he may play
         self.switched = 0                                     # the turn he last switched

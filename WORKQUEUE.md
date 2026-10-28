@@ -19,8 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **16. The Grand Exchange.** Buy and sell with wiki prices and guard rails (no selling
-  far under price, no buying far over).
 - [ ] **17. Smarter combat.** Targets by level, loot rules, burying bones, attack styles.
 - [ ] **Vampyre Slayer with real models.** `play --sim --world vampyre` with the two brains;
   write up how far they get and what trips them, and fix what's ours to fix.
@@ -47,11 +45,20 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   the list, and check the colors (red, yellow, green). Long lists scroll: only what's in view is read.
 - Quest Helper on, with a quest started: where its overlay sits and what color its text is (a
   screenshot of the top left of the game view; crop your name if it shows).
+- The Grand Exchange, watched closely the first time: the window's color, and every button
+  in layout.py (ge_buy, ge_sell, ge_first_result, ge_quantity, ge_price, ge_confirm,
+  ge_collect) are guesses. Try `do ge_buy item=feather quantity=10 price=5` while you watch.
+- Decide: on this server, are real-game GE prices a fair guide? (The high-alchemy guard holds
+  anywhere; the 3x-the-going-rate one uses the real game's prices.)
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **16. The Grand Exchange**: `ge_buy`, `ge_sell`, `ge_collect` through a clerk's Exchange;
+  sells under high-alchemy value (from the wiki's item value) or prices 3x off the wiki's live
+  price need sure=yes; typing only into the GE's boxes, names and numbers only. Sim market;
+  real clicks all guessed.
 - **10. Quest Helper**: its overlay's step text read into his prompt ("Quest Helper: ..."), and
   its quest_dialog / quest_target highlights explained when on screen; the sim's Vampyre
   Slayer has a Quest Helper that follows his progress.

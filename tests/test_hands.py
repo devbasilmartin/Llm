@@ -87,7 +87,8 @@ def test_slots_and_waiting(act, game):
 def test_the_brain_calls_actions_by_name(act):
     assert {a["function"]["name"] for a in ACTIONS} == \
         {"click_nearest", "click_item", "click_slot", "drop_all", "press", "wait", "wait_until_idle",
-         "survey", "inspect", "mark", "bank", "talk_to", "continue_dialogue", "choose", "walk_to", "interact", "equip", "unequip", "use", "trade", "buy", "sell"}
+         "survey", "inspect", "mark", "bank", "talk_to", "continue_dialogue", "choose", "walk_to", "interact", "equip", "unequip", "use", "trade", "buy", "sell",
+         "ge_buy", "ge_sell", "ge_collect"}
     assert all(a["function"]["description"] for a in ACTIONS)
     assert do(act, "click_nearest", {"name": "bank"}).ok
     assert not do(act, "fly", {}).ok

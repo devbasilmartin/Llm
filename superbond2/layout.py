@@ -62,6 +62,16 @@ class Layout:
     shop_step: tuple[int, int] = (47, 47)
     shop_cols: int = 8
     shop_rows: int = 5
+    # the Grand Exchange window (all guesses until measured): the first empty offer slot's Buy
+    # and Sell buttons, the search's first result, the quantity and price "..." buttons,
+    # Confirm, and Collect
+    ge_buy: tuple[int, int] = (58, 107)
+    ge_sell: tuple[int, int] = (95, 107)
+    ge_first_result: tuple[int, int] = (90, 370)
+    ge_quantity: tuple[int, int] = (226, 211)
+    ge_price: tuple[int, int] = (447, 211)
+    ge_confirm: tuple[int, int] = (260, 282)
+    ge_collect: tuple[int, int] = (459, 63)
     # Quest Helper's overlay: the quest and its current step, white text (a guess)
     quest_helper_text: Rect = Rect(8, 48, 260, 64)
     # the Quest tab: "Quest Points: 12" at the top, then the list, colored by state (a guess)
