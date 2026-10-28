@@ -193,6 +193,8 @@ FAST_NAMES = {t["function"]["name"] for t in FAST_TOOLS}
 BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_routine", "switch_character")]
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
+HINT_AFTER = 3              # the same call failing the same way: a hint, and a thoughtful turn
+REFUSE_AFTER = 5            # ...and after this many, it isn't run again until something changes
 STUCK_TURNS = 8             # turns with nothing at all changing on screen: probably stuck
 LEVELS_EVERY = 10           # turns between reading the Skills tab (and after every routine)
 BACKGROUND_MIN = 90         # seconds a routine has taken before it gets background thinking:
@@ -418,6 +420,7 @@ class Brain:
         self.levels_read = -LEVELS_EVERY            # the turn levels were last read
         self.still: tuple = (None, 0)               # the screen's signature, and turns unchanged
         self.slept = -10 ** 6                       # the turn he last slept on his notes
+        self.failing: tuple = ("", "", 0)           # a call, how it failed, and how many times running
         if wiki is not None:                        # sales are checked against the wiki
             actions.value_of = wiki.value
             actions.ge_price_of = wiki.ge_price
@@ -619,11 +622,25 @@ class Brain:
         call = reply.calls[0]
         name, args = call["name"], call["arguments"]
         t = time.monotonic()
+        key = name + json.dumps(args, sort_keys=True)
         if brain == "fast" and name not in FAST_NAMES:
             self.need_thought = f"you wanted to {name}"
             result = Result(True, f"{name} is for when you think it over; you will next turn")
+        elif self.failing[0] == key and self.failing[2] >= REFUSE_AFTER:
+            result = Result(False, f"not again: {name} has failed {self.failing[2]} times in a row "
+                                   "the same way. Do something different")
+            self.need_thought = f"{name} keeps failing the same way"
         else:
             result = self.dispatch(name, args)
+            if result.ok:
+                self.failing = ("", "", 0)
+            else:
+                same = self.failing[:2] == (key, result.said)
+                self.failing = (key, result.said, self.failing[2] + 1 if same else 1)
+                if self.failing[2] == HINT_AFTER:
+                    result.said += (f" (that's failed {HINT_AFTER} times in a row the same way: "
+                                    "try something else)")
+                    self.need_thought = f"{name} failed {HINT_AFTER} times in a row the same way"
         if len(reply.calls) > 1:
             result.said += " (only your first tool call is done each turn)"
         firsts = [item for item in dict.fromkeys(GAINED.findall(result.said))
@@ -645,7 +662,6 @@ class Brain:
                     self.need_thought = "you've done the same thing by hand 3 times: save it as a routine"
         elif name in ("run_routine", "save_routine"):
             self.by_hand = []                       # he's already using routines
-        key = name + json.dumps(args, sort_keys=True)
         self.same = (key, self.same[1] + 1 if key == self.same[0] else 1)
         if name == "run_routine" and not result.ok and "no routine called" in result.said:
             self.need_thought = f"there's no routine called {args.get('name')!r} yet"

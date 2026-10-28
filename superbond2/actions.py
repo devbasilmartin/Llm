@@ -51,6 +51,20 @@ def load_places() -> dict[str, tuple[int, int, int]]:
     return {str(k).lower(): tuple(v) for k, v in raw.items()}
 
 
+def places_for(name: str) -> list[str]:
+    """Places on the list named after someone or something ("Morgan" -> "morgan's house")."""
+    words = [w for w in str(name).lower().replace("_", " ").split() if len(w) >= 4]
+    return [p for p in load_places() if any(w in p for w in words)]
+
+
+def not_here(name: str, seen: list[str]) -> str:
+    """'no X in sight', with what is in sight and, if there is one, a place named after X."""
+    hint = places_for(name)
+    return (f"no {name} in sight (I can see: {', '.join(seen) or 'nothing'})" +
+            (f". There's a place by that name: walk_to {hint[0]}" if hint else
+             ". Not everything nearby shows: survey, or walk closer"))
+
+
 def died(before: View, after: View) -> bool:
     """A death, from two looks: HP was low and is full again (you respawn at full), and most
     of what he carried is gone (you keep only 3 items)."""
@@ -717,8 +731,7 @@ class Actions:
                     target = h
                     break
         if target is None:
-            seen = sorted({h.name for h in now.highlights})
-            return Result(False, f"no {name} in sight (I can see: {', '.join(seen) or 'nothing'})")
+            return Result(False, not_here(name, sorted({h.name for h in now.highlights})))
         rows = self.body.open_menu(target.center)
         row = next(((t, at) for t, at in rows if t.lower().startswith("talk-to")), None)
         if row is None:
