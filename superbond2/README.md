@@ -389,6 +389,12 @@ and the wait.
 
 ## The simulated game
 
+`sim_quests.py` lays out **Vampyre Slayer**: Morgan in Draynor, the garlic in his cupboard
+upstairs, Dr Harlow and a bartender in the Blue Moon Inn, a hammer near it, and Count Draynor
+in the manor's basement, who rises again without the stake and hammer. tests/test_quest.py
+plays it from Lumbridge to "Quest complete" with nothing but his actions;
+`play --sim --world vampyre` lets a model try.
+
 `sim.py` draws a small scene the way RuneLite draws the real one: oaks, a tree, a copper
 rock, a cow that fights back and drops a cowhide, the bank, another player. Clicking works:
 gather until full, shift-click to drop, click food to eat, click the bank to deposit, die and

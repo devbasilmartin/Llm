@@ -17,8 +17,6 @@ Rules for unattended rounds:
 Built and tested on the simulated game; screen positions and colors the real client decides
 are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
 
-- [ ] **12. Vampyre Slayer in the sim.** A whole quest, end to end, as a test bed: talk to
-  Morgan, get garlic, get a stake from Dr Harlow, the beer, the hammer, Draynor Manor, the fight.
 - [ ] **2. Where am I.** Position from a RuneLite coordinates overlay (OCR), and a named place
   for it, in the prompt.
 - [ ] **3. Levels and XP.** Read levels (Skills tab) and XP drops; level-ups to Discord, XP per
@@ -39,6 +37,8 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 - [ ] **16. The Grand Exchange.** Buy and sell with wiki prices and guard rails (no selling
   far under price, no buying far over).
 - [ ] **17. Smarter combat.** Targets by level, loot rules, burying bones, attack styles.
+- [ ] **Vampyre Slayer with real models.** `play --sim --world vampyre` with the two brains;
+  write up how far they get and what trips them, and fix what's ours to fix.
 - [ ] **25. A BPE tokenizer** for the tiny GPT, compared with letters (learn/).
 
 ## Waiting on the owner
@@ -52,6 +52,11 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 ## Done
 
+- **12. Vampyre Slayer in the sim**: a world with places (things show near where they are),
+  stairs that go somewhere, a cupboard to search, NPC scripts with needs, takes and quest points,
+  and a Count who rises again without stake and hammer; played start to finish by a test. Found
+  and fixed: diagonal walk clicks landed off the round minimap; untagged items are now named
+  by hovering them once.
 - **7. Doors, gates, stairs, ladders**: `interact <thing> <option>` through the right-click
   menu (highlights or survey names), an action and a routine step; the sim's doors block tiles
   till opened, ladders change floors, and its walking now routes around walls like the game.

@@ -51,6 +51,9 @@ class Thing:
     talk: dict | None = None
     options: tuple = ()          # more right-click options: ("Climb-up", "Climb-down")
     blocks: frozenset = frozenset()   # a closed door or gate: the tiles it shuts
+    at: tuple | None = None      # where in the world it is (x, y, floor); None: always in view
+    goes: tuple | None = None    # stairs, ladders, trapdoors: where climbing takes you
+    needs: tuple = ()            # a monster that can't be killed without these items
 
     def here(self, t: float) -> bool:
         return t >= self.gone_until
@@ -95,6 +98,7 @@ class SimGame:
         self.dialogue: dict | None = None
         self.convo: tuple[Thing, str, int] | None = None   # who, which node, which step
         self.flags: set[str] = set()                        # what conversations have set
+        self.quest_points = 0
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
         self.path: list = []                                # the tiles on the way there
@@ -150,7 +154,7 @@ class SimGame:
         if not self.layout.viewport.contains(pt):
             return
         for thing in self.things:
-            if thing.here(self.t) and thing.box.grow(2).contains(pt):
+            if self._visible(thing) and thing.box.grow(2).contains(pt):
                 return self._click_thing(thing)
         self.doing = None                     # clicked the ground: walk there, stop working
 
@@ -168,6 +172,9 @@ class SimGame:
             return
         if self.convo is not None and k != "esc":
             return self._dialogue_key(k)
+        if self.dialogue is not None and k == "space":     # a line on its own: gone
+            self.dialogue = None
+            return
         if k == "esc":
             self.doing, self.bank_open = None, False
 
@@ -180,17 +187,31 @@ class SimGame:
             self._tick()
         self.t = end
 
+    NEAR = 15                            # tiles: how far things stay in view
+
+    def _visible(self, thing: Thing) -> bool:
+        if not thing.here(self.t):
+            return False
+        if thing.at is None:
+            return True
+        x, y, floor = thing.at
+        return floor == self.pos[2] and max(abs(x - self.pos[0]), abs(y - self.pos[1])) <= self.NEAR
+
     # --- hovering and right-click menus -------------------------------------------------
     def _under(self, pt) -> Thing | None:
         if not self.layout.viewport.contains(pt):
             return None
         for thing in self.things:
-            if thing.here(self.t) and thing.box.grow(2).contains(pt):
+            if self._visible(thing) and thing.box.grow(2).contains(pt):
                 return thing
         return None
 
     def hover(self, pt):
         from .text import Hover
+        slot = self.layout.slot_at(pt) if self.screen == "game" else None
+        if slot is not None and self.inventory[slot] is not None:     # an item: "Use Garlic"
+            label = self.inventory[slot].replace("_", " ").capitalize()
+            return Hover(f"Use {label}", label, "item")
         thing = self._under(pt) if self.screen == "game" else None
         if thing is None:
             return None
@@ -254,10 +275,16 @@ class SimGame:
         elif option == "Close":
             self.walls |= thing.blocks
             thing.verb = "Open"
+        elif option in ("Climb-up", "Climb", "Climb-down", "Enter") and thing.goes:
+            self.pos[:] = list(thing.goes)
+            self.walk_to, self.path = None, []
         elif option in ("Climb-up", "Climb"):
             self.pos[2] += 1
         elif option == "Climb-down":
             self.pos[2] = max(0, self.pos[2] - 1)
+        elif option == "Search" and thing.gives and thing.hp == 0:
+            if self._put(thing.gives):
+                thing.hp = 1                                # searched: found it once
 
     def _talk(self, thing: Thing, node: str, i: int) -> None:
         """Run the conversation from (node, i): effects happen on the way, and it stops at the
@@ -269,6 +296,17 @@ class SimGame:
                 self._put(step[1])
             elif step[0] == "flag":
                 self.flags.add(step[1])
+            elif step[0] == "take":
+                if step[1] in self.inventory:
+                    self.inventory[self.inventory.index(step[1])] = None
+            elif step[0] == "need" and step[1] not in self.inventory:
+                node, steps, i = step[2], thing.talk[step[2]], 0     # haven't got it: go there
+                continue
+            elif step[0] == "if" and step[1] in self.flags:
+                node, steps, i = step[2], thing.talk[step[2]], 0     # already done that
+                continue
+            elif step[0] == "qp":
+                self.quest_points += step[1]
             elif step[0] == "say":
                 self.convo = (thing, node, i)
                 self.dialogue = {"speaker": step[1], "text": step[2], "more": True}
@@ -405,7 +443,7 @@ class SimGame:
             if not self.path:
                 self.walk_to = None
         thing = self.doing
-        if thing is not None and not thing.here(self.t):
+        if thing is not None and not self._visible(thing):
             thing = self.doing = None                    # someone else got it / it ran out
         if thing is not None and self.t >= self._next_action - 1e-9:
             self._next_action = self.t + 4 * TICK
@@ -428,19 +466,33 @@ class SimGame:
 
     def _fight(self, thing: Thing) -> None:
         thing.hp -= self.rng.randint(0, 3)
+        if thing.hp <= 0 and thing.needs and not all(n in self.inventory for n in thing.needs):
+            thing.hp = 25                                   # rises again: it needs more than that
+            self.dialogue = {"speaker": thing.label, "text": "You can't kill me like that, mortal!",
+                             "more": False}
+        elif thing.hp <= 0 and thing.needs:
+            self.doing, thing.gone_until = None, 1e12     # gone for good
+            self._quest_done(thing)
+            return
         if thing.hp <= 0:
             thing.gone_until = self.t + thing.respawn
             thing.hp = 8
             self.doing = None
             if thing.gives:
                 x, y = thing.box.x - self.layout.viewport.x, thing.box.y - self.layout.viewport.y
-                self.add("loot", "loot", x + 5, y + thing.box.h - 12, 18, 10, gives=thing.gives)
+                loot = self.add("loot", "loot", x + 5, y + thing.box.h - 12, 18, 10, gives=thing.gives)
+                loot.at = thing.at
             return
         self.hp -= self.rng.randint(0, 2)
         if self.hp <= 0:                                  # dead: respawn with nothing
             self.deaths += 1
             self.hp, self.doing = self.max_hp, None
             self.inventory = [None] * SLOTS
+
+    def _quest_done(self, thing: Thing) -> None:
+        """A quest boss beaten: whatever its script says happens then."""
+        if thing.talk and "defeated" in thing.talk:
+            self._talk(thing, "defeated", 0)
 
     # --- drawing --------------------------------------------------------------------------
     def grab(self) -> np.ndarray:
@@ -458,7 +510,7 @@ class SimGame:
             img[vp.y + 4:vp.y + vp.h - 4, vp.x + 4:vp.x + vp.w - 4] = BANK_FILL
         else:
             for thing in self.things:
-                if thing.here(self.t):
+                if self._visible(thing):
                     self._draw_thing(img, thing)
             self._draw_player(img)
         for i, item in enumerate(self.inventory):

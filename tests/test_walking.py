@@ -100,3 +100,19 @@ def test_a_routine_opens_a_door():
     r = Runner(act).run(Routine.from_dict(simple_routine("through", "x", ["interact Door Open",
                                                                           "walk_to grand exchange"])))
     assert r.ok, r.said
+
+
+def test_diagonal_clicks_stay_on_the_round_minimap():
+    from superbond2.layout import Layout
+    lay = Layout()
+    clicks = []
+
+    class Watch(SimBody):
+        def click(self, pt, shift=False):
+            clicks.append(pt)
+            super().click(pt, shift)
+    game = lumbridge()
+    assert Actions(Watch(game), EYES).walk_to("varrock east mine").ok      # far, north-east
+    cx, cy = lay.minimap_center
+    on_map = [p for p in clicks if p != lay.compass]
+    assert on_map and all((p[0] - cx) ** 2 + (p[1] - cy) ** 2 <= lay.minimap_radius ** 2 for p in on_map)

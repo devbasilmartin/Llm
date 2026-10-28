@@ -134,7 +134,9 @@ def play(args) -> int:
         accounts.insert(0, start)
     if args.sim:
         from .sim import lumbridge
-        body, folder = SimBody(lumbridge()), DATA / "sim-memory"
+        from .sim_quests import vampyre_world
+        world = vampyre_world() if args.world == "vampyre" else lumbridge()
+        body, folder = SimBody(world), DATA / "sim-memory"
         start, accounts = None, []
     else:
         from .screen import Screen
@@ -355,6 +357,8 @@ def main(argv=None) -> int:
     pl.add_argument("--host", default="http://10.0.2.2:11434",
                     help="where Ollama is (default: the Windows host, seen from the VM)")
     pl.add_argument("--sim", action="store_true", help="on the simulated game, not the client")
+    pl.add_argument("--world", default="lumbridge", choices=("lumbridge", "vampyre"),
+                    help="with --sim: lumbridge, or vampyre (Vampyre Slayer laid out)")
     pl.add_argument("--turns", type=int, default=50)
     pl.add_argument("--minutes", type=float, default=60)
     pl.add_argument("--think", help="on, off, or low/medium/high for gpt-oss")

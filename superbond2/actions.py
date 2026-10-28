@@ -87,6 +87,7 @@ class Actions:
         self.body, self.eyes = body, eyes
         self.keep: set[str] = set()         # never banked: his reflex food (the brain sets it)
         self.deaths: list[list[str]] = []   # each death noticed: what he lost
+        self._untagged: dict[int, str] = {}  # slot -> the name of the untagged item there
         self.look()
 
     def look(self) -> View:
@@ -97,11 +98,26 @@ class Actions:
         first = self.body.grab()
         self.body.wait(GLANCE)
         last, self.view = getattr(self, "view", None), self.eyes.look(self.body.grab(), before=first)
+        self._name_untagged(self.view)
         if self.view.dialogue_open and hasattr(self.body, "read_dialogue"):
             self.view.dialogue = self.body.read_dialogue()
         if last is not None and died(last, self.view):
             self.deaths.append(sorted((last.items() - self.view.items()).elements()))
         return self.view
+
+    def _name_untagged(self, view: View) -> None:
+        """Items with no Inventory Tags color (tools, quest items) get their name from the
+        hover text, read once per slot ("Use Garlic") until the slot changes."""
+        for i, item in enumerate(view.inventory):
+            if item != UNTAGGED:
+                self._untagged.pop(i, None)
+                continue
+            if i not in self._untagged:
+                h = self.body.read_hover(self.eyes.layout.slot(i).center) \
+                    if hasattr(self.body, "read_hover") else None
+                self._untagged[i] = as_name(h.name) if h is not None and h.kind == "item" else ""
+            if self._untagged[i]:
+                view.inventory[i] = self._untagged[i]
 
     def _after(self, before: View, did: str, settle: float = SETTLE) -> Result:
         """Look again after acting, and say what changed since `before`: the last look
@@ -269,7 +285,8 @@ class Actions:
                     break
             else:
                 return Result(False, "clicked the bank, but it didn't open")
-        kept = {as_name(k) for k in str(keep or "").split(",") if k.strip()} | self.keep
+        kept = {as_name(k) for k in str(keep or "").split(",") if k.strip()} | self.keep | \
+            {n for n in self._untagged.values() if n}      # tools and quest items stay
         banked = []
         for i, item in enumerate(self.view.inventory):
             if item is None or item == UNTAGGED or item in kept or item in banked:
@@ -278,7 +295,8 @@ class Actions:
             self.body.wait(0.6)
             banked.append(item)
         self.body.key("esc")
-        held = sorted({i for i in self.view.inventory if i and i != UNTAGGED and i in kept})
+        held = sorted({i for i in self.view.inventory if i and i != UNTAGGED and i in kept
+                       and i not in self._untagged.values()})
         did = ("banked " + ", ".join(b.replace("_", " ") for b in banked) if banked else
                "nothing to bank") + (f" (kept {', '.join(h.replace('_', ' ') for h in held)})"
                                      if held else "")
@@ -306,8 +324,8 @@ class Actions:
         while max(abs(tx - here[0]), abs(ty - here[1])) > ARRIVED and steps < MAX_WALK_STEPS:
             steps += 1
             dx, dy = tx - here[0], ty - here[1]
-            far = max(abs(dx), abs(dy))
-            k = min(1.0, WALK_STEP / far)
+            far = (dx * dx + dy * dy) ** 0.5            # the minimap is round: a diagonal
+            k = min(1.0, WALK_STEP / far)               # click can't go as far out
             pt = (lay.minimap_center[0] + round(dx * k * lay.minimap_tile),
                   lay.minimap_center[1] - round(dy * k * lay.minimap_tile))
             self.body.click(pt)
