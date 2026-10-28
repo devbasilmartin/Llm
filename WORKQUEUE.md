@@ -14,8 +14,7 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Learning track 3: a guide.** `learn/README.md` explaining each part in plain words,
-  for the owner to read on a phone.
+(Nothing left that can be done without the owner. Add items here to start the loop again.)
 
 ## Waiting on the owner
 
@@ -26,6 +25,8 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Learning track 3**: `learn/README.md`, how a GPT works in plain words, part by part,
+  using the tiny one and its first run (written for a phone).
 - **Learning track 2** (9509c1c): `learn/gpt.py`, a character-level GPT in numpy with the
   backward pass by hand; every gradient checked numerically. On 1,500 wiki pages (2.2 MB),
   122k numbers, 3,000 steps in 6 minutes on a 4-core cloud CPU: loss 4.9 (guessing) -> about
