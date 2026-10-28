@@ -267,3 +267,38 @@ def test_routine_times_are_a_running_mean(tmp_path):
     lib.record(r, ok, 100)
     lib.record(r, ok, 200)
     assert lib.stats("chop")["seconds"] == 130.0
+
+
+def test_after_waiting_for_background_thinking_he_looks_again(game, memory):
+    import threading
+    fast = Scripted(WAIT)
+    b = two(game, memory, fast, Scripted())
+    b.actions.look()
+
+    def think():                                     # meanwhile, the game moved on
+        game.give("oak_logs", 5)
+    t = threading.Thread(target=think)
+    t.start()
+    b.background = (t, {}, "prompt")
+    b.turn()
+    assert "5 oak logs" in fast.prompts[0]
+
+
+class LoggingOut:
+    def __init__(self, game):
+        self.game = game
+
+    def log_out(self):
+        self.game.screen = "login"
+
+
+def test_a_reflex_logout_skips_the_model(game, memory):
+    fighting(game)
+    game.hp = 9
+    fast, slow = Scripted(), Scripted()
+    b = two(game, memory, fast, slow)
+    b.reflexes.session = LoggingOut(game)
+    b.reflexes.fled = 30                             # already ran once, and still dropping
+    t = b.turn()
+    assert t.result == "reflex: fled the fight and logged out" and t.ok
+    assert fast.prompts == [] and slow.prompts == []

@@ -14,7 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Code review** of superbond2/ for bugs, and fix what's real.
 - [ ] **Learning track 1: the wiki as text.** Fetch a few hundred OSRS Wiki pages politely
   (the existing Wiki client's rules), cleaned to plain text, into `learn/data/` (not in git).
   Done when: a script does it, tested on a few pages.
@@ -33,6 +32,10 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Code review**, four real bugs fixed: after waiting for background thinking, a turn used
+  the screen from before the wait; that wait didn't beat the heartbeat (the watchdog could
+  kill a healthy game); a reflex logout still asked a model what to do on the login screen;
+  a helper restarted by `!update` forgot the game it was watching (now in data/watching.json).
 - **Bake-off grading**: a wiki search first now gets an answer and the next call is graded;
   walking away from the i6 scam passes. The other failures (d2, d3, j3, j4) were fair.
 - **Deaths**: noticed between any two looks (also mid-routine, which they stop), told to him

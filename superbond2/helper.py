@@ -64,6 +64,13 @@ class Helper:
         self.playing: subprocess.Popen | None = None
         self.play: dict | None = None               # the !play the watchdog keeps going
         self.restarts: list[float] = []             # when it restarted him
+        self._watching = self.repo / "data" / "watching.json"   # survives the helper's restart
+        try:
+            saved = json.loads(self._watching.read_text())
+            if saved["until"] > time.time():
+                self.play, self.restarts = saved["play"], saved["restarts"]
+        except (OSError, ValueError, KeyError):
+            pass
         self.restart = False
 
     # --- talking ----------------------------------------------------------------------------
@@ -334,32 +341,56 @@ class Helper:
         (self.repo / "data" / "heartbeat").touch()  # counting from now
         self.playing = self.popen(self.play["cmd"] + ["--minutes", str(minutes)], cwd=self.repo,
                                   stdout=log.open("a"), stderr=subprocess.STDOUT)
+        self._save()
+
+    def _save(self) -> None:
+        if self.play is None:
+            self._watching.unlink(missing_ok=True)
+        else:
+            self._watching.write_text(json.dumps({"play": self.play, "restarts": self.restarts,
+                                                  "until": self.play["until"]}))
 
     # --- the watchdog ---------------------------------------------------------------------------
     def watch(self, now: float | None = None) -> None:
         """Keep a !play going: restart him if he crashed or hung, a few times an hour at most.
         A clean exit (time's up, `stop`, the kill switch) is left alone."""
-        if self.play is None or self.playing is None:
+        if self.play is None:
             return
         now = time.time() if now is None else now
-        code = self.playing.poll()
-        if code is None:
-            quiet = heartbeat.age(self.repo / "data" / "heartbeat", now)
-            if quiet is None or quiet < HUNG:
+        quiet = heartbeat.age(self.repo / "data" / "heartbeat", now)
+        hung = quiet is not None and quiet >= HUNG
+        if self.playing is None:                    # the helper restarted: find the game again
+            pid = self._playing_pid()
+            if pid is not None and not hung:
                 return
-            self._end(self.playing)
-            why = f"he hung (nothing for {quiet / 60:.0f} minutes)"
-        elif code == 0:
-            self.play = None                        # he finished, or was stopped on purpose
-            return
+            if pid is not None:
+                os.kill(pid, signal.SIGINT)
+                why = f"he hung (nothing for {quiet / 60:.0f} minutes)"
+            elif "Traceback" in self._tail(15):     # ended while the helper was away
+                why = "he crashed"
+            else:
+                self.play = None
+                return self._save()
         else:
-            why = f"he crashed (exit code {code})"
+            code = self.playing.poll()
+            if code is None and not hung:
+                return
+            if code is None:
+                self._end(self.playing)
+                why = f"he hung (nothing for {quiet / 60:.0f} minutes)"
+            elif code == 0:
+                self.play = None                    # he finished, or was stopped on purpose
+                return self._save()
+            else:
+                why = f"he crashed (exit code {code})"
         if self.play["until"] - now < 60:
             self.play = None
+            self._save()
             return self.say(f"⚠️ {why}, right at the end of his time. Not restarting. `!log` shows why.")
         self.restarts = [t for t in self.restarts if now - t < 3600] + [now]
         if len(self.restarts) > RESTARTS:
             self.play = None
+            self._save()
             return self.say(f"⚠️ {why} again: {RESTARTS} restarts this hour is enough, so I've "
                             "stopped. `!log` shows what went wrong.")
         tail = self._tail(3)
@@ -396,6 +427,7 @@ class Helper:
                 self.proc.kill()
             stopped.append(self.job[0] if self.job else "the job")
         self.play = None                            # no watchdog restart after this
+        self._save()
         pid = self._playing_pid()
         if pid:
             os.kill(pid, signal.SIGINT)              # play's Stopped/finally: releases its lock

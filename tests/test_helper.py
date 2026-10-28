@@ -371,3 +371,28 @@ def test_bakeoff_options(repo):
         h.handle(bad)
         assert says in d.posted[-1], bad
     assert len(popen.cmds) == 1
+
+
+def test_a_restarted_helper_keeps_watching(repo, monkeypatch):
+    import time
+    first = FakeProc()
+    h, d, popen = started(repo, first)
+    assert (repo / "data" / "watching.json").exists()
+    again, d2 = helper(repo, Popen(FakeProc()))           # after !update: a new helper
+    assert again.play == h.play and again.playing is None
+    monkeypatch.setattr(again, "_playing_pid", lambda: 4242)
+    again.watch()                                         # still playing, not hung: nothing
+    assert again.play is not None and d2.posted == []
+    monkeypatch.setattr(again, "_playing_pid", lambda: None)
+    (repo / "data" / "play.log").write_text("Traceback (most recent call last):\nboom\n")
+    again.watch(now=time.time() + 60)
+    assert again.popen.cmds and d2.posted[-1].startswith("🔁 he crashed; restarting him")
+
+
+def test_a_game_that_finished_while_the_helper_was_away_is_let_go(repo, monkeypatch):
+    h, d, popen = started(repo, FakeProc())
+    (repo / "data" / "play.log").write_text("Done for now: stopped after 60 minutes.\n")
+    again, d2 = helper(repo)
+    monkeypatch.setattr(again, "_playing_pid", lambda: None)
+    again.watch()
+    assert again.play is None and not (repo / "data" / "watching.json").exists()

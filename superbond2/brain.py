@@ -453,7 +453,12 @@ class Brain:
         if self.background is None:
             return
         thread, holder, prompt = self.background
-        thread.join(wait)
+        end = time.monotonic() + wait
+        while True:                                 # waiting isn't hanging: keep the heartbeat
+            thread.join(max(0.0, min(30.0, end - time.monotonic())))
+            if not thread.is_alive() or time.monotonic() >= end:
+                break
+            heartbeat.beat()
         if thread.is_alive():
             return
         self.background, self.last_slow = None, self.turns
@@ -494,7 +499,11 @@ class Brain:
             view = self.actions.view
         if stop:
             self.recent.append(f"{self.turns}. reflex: {stop}")
-        self.collect(wait=600)      # still thinking from the last routine: one model at a time
+            if not self.actions.look().in_game:     # the reflex logged him out: nothing to decide
+                return self._record(Turn(self.turns, "", {}, f"reflex: {stop}", True, 0), "", None)
+        if self.background is not None:
+            self.collect(wait=600)  # still thinking from the last routine: one model at a time
+            view = self.actions.look()              # the screen has moved on while it thought
         why = self.which()
         brain = "fast" if not why else "slow"
         if brain == "fast":
