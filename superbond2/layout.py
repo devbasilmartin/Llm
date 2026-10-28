@@ -42,6 +42,10 @@ class Layout:
     compass: tuple[int, int] = (561, 20)            # clicking it turns the camera north (a guess)
     # a RuneLite overlay showing his tile, "3222, 3218, 0", placed under the hover text
     position_text: Rect = Rect(8, 26, 220, 18)
+    # the Skills tab: 3 columns of skills, each with its level in yellow at the right (a guess)
+    skills_origin: tuple[int, int] = (550, 210)
+    skills_step: tuple[int, int] = (63, 32)
+    skills_cell: tuple[int, int] = (60, 28)
     chatbox: Rect = Rect(7, 345, 499, 130)
     # inventory: 4 columns x 7 rows (measured: empty slots are flat panel)
     inv_origin: tuple[int, int] = (563, 213)

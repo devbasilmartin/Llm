@@ -29,6 +29,9 @@ SPRITE = (140, 110, 90)          # any item or object sprite
 INK = (10, 10, 10)               # the black outline every item sprite has
 PLAYER = (90, 70, 160)
 TICK = 0.6                       # one game tick, in seconds
+GATHER_XP = {"logs": ("woodcutting", 25), "oak_logs": ("woodcutting", 37.5),
+             "willow_logs": ("woodcutting", 67.5), "copper_ore": ("mining", 17.5),
+             "tin_ore": ("mining", 17.5), "iron_ore": ("mining", 35)}
 FOOD = {"trout": 7, "shrimps": 3, "lobster": 12, "cooked_meat": 3}
 
 
@@ -99,6 +102,7 @@ class SimGame:
         self.convo: tuple[Thing, str, int] | None = None   # who, which node, which step
         self.flags: set[str] = set()                        # what conversations have set
         self.quest_points = 0
+        self.xp: Counter = Counter()          # skill -> XP
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
         self.path: list = []                                # the tiles on the way there
@@ -458,14 +462,29 @@ class SimGame:
             return
         if self.rng.random() < 0.5:
             self._put(thing.gives)
+            skill, xp = GATHER_XP.get(thing.gives, (None, 0))
+            if skill:
+                self.xp[skill] += xp
             if self.rng.random() < thing.deplete:
                 thing.gone_until = self.t + thing.respawn
                 self.doing = None
             elif None not in self.inventory:
                 self.doing = None
 
+    def levels(self) -> dict[str, int]:
+        from .levels import level_for_xp, starting_levels
+        out = starting_levels()
+        out["hitpoints"] = max(10, level_for_xp(self.xp["hitpoints"] + 1154))
+        for skill, xp in self.xp.items():
+            if skill != "hitpoints":
+                out[skill] = level_for_xp(xp)
+        return out
+
     def _fight(self, thing: Thing) -> None:
-        thing.hp -= self.rng.randint(0, 3)
+        hit = self.rng.randint(0, 3)
+        thing.hp -= hit
+        self.xp["attack"] += 4 * hit
+        self.xp["hitpoints"] += 1.33 * hit
         if thing.hp <= 0 and thing.needs and not all(n in self.inventory for n in thing.needs):
             thing.hp = 25                                   # rises again: it needs more than that
             self.dialogue = {"speaker": thing.label, "text": "You can't kill me like that, mortal!",

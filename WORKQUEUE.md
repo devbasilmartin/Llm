@@ -17,8 +17,6 @@ Rules for unattended rounds:
 Built and tested on the simulated game; screen positions and colors the real client decides
 are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
 
-- [ ] **3. Levels and XP.** Read levels (Skills tab) and XP drops; level-ups to Discord, XP per
-  hour in the daily summary.
 - [ ] **14. Equipment.** Wear/wield items, read the equipment tab, in the prompt.
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
@@ -48,11 +46,17 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 - Turn on a coordinates overlay (RuneLite's Developer Tools Location, in developer mode, or a
   Plugin Hub plugin showing tile coordinates) under the hover text, and run
   `python -m superbond2 where`; send what it read and `where-raw.png`. walk_to needs it.
+- With the Skills tab open: a screenshot of the tab alone (it shows no name), to place the
+  level reader's cells; and whether Sailing has changed the tab's layout.
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **3. Levels**: read from the Skills tab at the start, after each routine and every 10 turns;
+  level-ups told to him, posted (🎉) and logged; a Levels line in both prompts; levels gained
+  in the daily summary (instead of XP per hour, which needs a hover per skill). The sim earns
+  XP by the game's table.
 - **2. Where am I**: his tile read from a coordinates overlay (OCR of "3222, 3218, 0"), and a
   `Where:` line in his prompt with the nearest named place; `python -m superbond2 where` checks it.
 - **12. Vampyre Slayer in the sim**: a world with places (things show near where they are),

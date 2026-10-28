@@ -175,7 +175,7 @@ class Discord:
 def daily_summary(memory: Memory, day: str) -> str:
     """One post about a day of play (`day` is YYYY-MM-DD), from his decision log, firsts and
     journal."""
-    turns, deaths = [], []
+    turns, deaths, ups = [], [], []
     if memory.decisions_file.exists():
         for line in memory.decisions_file.read_text().splitlines():
             try:
@@ -183,7 +183,10 @@ def daily_summary(memory: Memory, day: str) -> str:
             except ValueError:
                 continue
             if str(rec.get("at", "")).startswith(day):
-                (deaths if rec.get("event") == "death" else turns).append(rec)
+                if rec.get("event") == "level":
+                    ups.append(rec)
+                else:
+                    (deaths if rec.get("event") == "death" else turns).append(rec)
     if not turns:
         return f"📅 {day}: no play today."
     routines = [t for t in turns if t.get("tool") == "run_routine"]
@@ -200,6 +203,12 @@ def daily_summary(memory: Memory, day: str) -> str:
              + (f", about {sum(seconds) / len(seconds):.0f} s each" if seconds else "") + "."]
     if routines:
         lines.append(f"Routines: {len(routines)} run, {worked} worked.")
+    if ups:
+        gained: dict[str, list[int]] = {}
+        for u in ups:
+            first, _ = gained.setdefault(u["skill"], [u["from"], u["to"]])
+            gained[u["skill"]] = [first, u["to"]]
+        lines.append("🎉 Levels: " + ", ".join(f"{k} {a} → {b}" for k, (a, b) in gained.items()) + ".")
     if deaths:
         lines.append(f"💀 Died {len(deaths)} time{'s' if len(deaths) > 1 else ''}.")
     if new:

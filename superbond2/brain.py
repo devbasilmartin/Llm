@@ -21,7 +21,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
-from . import heartbeat
+from . import heartbeat, levels
 from .actions import ACTIONS, Actions, Result, do
 from .eyes import View, describe
 from .memory import Memory
@@ -174,6 +174,7 @@ FAST_NAMES = {t["function"]["name"] for t in FAST_TOOLS}
 BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_routine", "switch_character")]
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
+LEVELS_EVERY = 10           # turns between reading the Skills tab (and after every routine)
 BACKGROUND_MIN = 90         # seconds a routine has taken before it gets background thinking:
                             # the big model takes minutes, and two models at once crawl
 BACKGROUND_GAP = 2          # turns after a thoughtful one before a routine gets background thinking
@@ -353,6 +354,7 @@ class Brain:
         self.last_slow = 0                  # the turn the thoughtful brain last had
         self.background = None              # thinking while a routine plays: (thread, holder)
         self.background_min = BACKGROUND_MIN
+        self.levels_read = -LEVELS_EVERY            # the turn levels were last read
         self.session, self.character = session, character     # to log back in if dropped
         self.accounts = accounts or ([character] if character else [])   # ones he may play
         self.switched = 0                                     # the turn he last switched
@@ -392,6 +394,8 @@ class Brain:
         lines += [f"- {n}" for n in m.notes()[-NOTES_SHOWN:]] or ["(empty)"]
         routines = (m.routines.summary() if m.routines.names() else
                     "(none yet: anything you do by hand a few times is worth saving as one)")
+        if m.levels():
+            lines += ["", levels.line(m.levels())]
         lines += ["", "Your routines:", routines, "",
                   (f"Reflexes: you eat {', '.join(r['food'])} automatically below {r['eat_below']}% HP"
                    if r["eat_below"] else "Reflexes: you don't eat automatically") +
@@ -412,8 +416,10 @@ class Brain:
     def fast_prompt(self, view: View) -> str:
         """Short, so a small model reads it quickly: goal, routines, recent turns, the screen."""
         goal = self.memory.goal()
-        lines = [f"Your goal: {goal['goal']}" if goal else "Your goal: none yet.", "",
-                 "Your routines:", self.memory.routines.summary() if self.memory.routines.names()
+        lines = [f"Your goal: {goal['goal']}" if goal else "Your goal: none yet."]
+        if self.memory.levels():
+            lines.append(levels.line(self.memory.levels()))
+        lines += ["", "Your routines:", self.memory.routines.summary() if self.memory.routines.names()
                  else "(none yet)", "", "Recent turns, oldest first:"]
         lines += [r if len(r) <= FAST_LINE else r[:FAST_LINE - 3] + "..."
                   for r in self.recent[-FAST_RECENT:]] or ["(this is your first turn)"]
@@ -497,6 +503,8 @@ class Brain:
             view = self.actions.look()
         self.actions.keep = set(self.memory.reflexes()["food"])   # banking keeps his food
         self.mourn()
+        if self.turns - self.levels_read >= LEVELS_EVERY:
+            self.check_levels()
         stop = self.reflexes(view)
         if self.reflexes.last:
             self.recent.append(f"{self.turns}. {self.reflexes.last}")
@@ -603,6 +611,7 @@ class Brain:
                 run = Runner(self.actions, guard=self.reflexes).run(routine)
                 m.routines.record(routine, run, time.monotonic() - started)
                 self.mourn()
+                self.check_levels()
                 return Result(run.ok, run.said)
             if name == "save_routine":
                 if "routine" in args:                    # the YAML form, for longer routines
@@ -708,6 +717,24 @@ class Brain:
                          "prompt_tokens": reply.prompt_tokens if reply else 0, "state": prompt})
         self.say(f"[{turn.number}] {what} -> {turn.result}")
         return turn
+
+    def check_levels(self) -> None:
+        """Read the levels (the Skills tab), and celebrate what went up."""
+        self.levels_read = self.turns
+        read = getattr(self.actions.body, "read_levels", None)
+        try:
+            now = read() if read else None
+        except RuntimeError:                            # no Tesseract: nothing to read with
+            now = None
+        if not now:
+            return
+        before = self.memory.levels()
+        for skill, was, new in levels.changes(before, now) if before else []:
+            self.recent.append(f"{self.turns}. 🎉 level up! {skill} {was} -> {new}")
+            self.owner.tell(f"🎉 Level up! {skill.capitalize()} {new}"
+                            + (f" on {self.character}" if self.character else "") + "!")
+            self.memory.log({"event": "level", "skill": skill, "from": was, "to": new})
+        self.memory.set_levels(now)
 
     def mourn(self) -> None:
         """Deaths the eyes noticed since the last turn: tell him, the owner and the log."""

@@ -61,6 +61,7 @@ class Memory:
         self.accounts_file = self.folder / "accounts.yaml"
         self.routines = Library(self.folder / "routines")
         self.account: str | None = None
+        self.levels_file = self.folder / "levels.yaml"
         if not self.notebook_file.exists():
             self.notebook_file.write_text("# superbond2's notebook\n\n")
             for note in OFFER:
@@ -89,6 +90,7 @@ class Memory:
         self.account = account
         self.goals_file = (self.folder / "accounts" / account / "goals.yaml" if account
                            else self.folder / "goals.yaml")
+        self.levels_file = self.goals_file.with_name("levels.yaml")
         self.goals_file.parent.mkdir(parents=True, exist_ok=True)
 
     def accounts(self) -> dict[str, str]:
@@ -97,6 +99,14 @@ class Memory:
             return {}
         raw = yaml.safe_load(self.accounts_file.read_text()) or {}
         return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+
+    # --- levels (per account) -------------------------------------------------------------
+    def levels(self) -> dict[str, int]:
+        return (yaml.safe_load(self.levels_file.read_text()) or {}) if self.levels_file.exists() else {}
+
+    def set_levels(self, levels: dict[str, int]) -> None:
+        self.levels_file.parent.mkdir(parents=True, exist_ok=True)
+        self.levels_file.write_text(yaml.safe_dump(dict(levels), sort_keys=False))
 
     # --- goals ----------------------------------------------------------------------------
     def goals(self) -> list[dict]:

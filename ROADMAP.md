@@ -80,7 +80,7 @@ bottom.
 - [x] The Discord helper: `!status`, `!models`, `!pull`, `!bakeoff` (report attached), `!update`, `!tests`, `!play`, `!log`, `!kill`; owner only, fixed jobs, starts with the VM's desktop ([docs/remote.md](docs/remote.md))
 - [x] Watchdog: the helper restarts a `!play` after a crash or 15 minutes without a heartbeat (3 times an hour at most), and says so on Discord
 - [x] Deaths: noticed from two looks (low HP, then full HP and most items gone), told to him, posted on Discord, counted in the daily summary
-- [ ] Level-ups on Discord, and XP in the daily summary (needs eyes for them)
+- [x] Level-ups on Discord, and levels gained in the daily summary (read from the Skills tab)
 - [ ] Claude Remote Control on Windows, reaching the VM over SSH ([docs/remote.md](docs/remote.md))
 - [ ] A full evening unattended, followed only through Discord
 

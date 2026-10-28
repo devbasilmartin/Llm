@@ -134,6 +134,23 @@ class Reader:
         m = re.search(r"(\d{4,5})\D{1,3}(\d{4,5})\D{1,3}(\d)", text)
         return (int(m[1]), int(m[2]), int(m[3])) if m else None
 
+    def levels(self, img: np.ndarray) -> dict[str, int] | None:
+        """Levels from the Skills tab (open), each read from the yellow "15/15" in its cell."""
+        import re
+        from .levels import SKILLS
+        lay, out = self.layout, {}
+        for i, skill in enumerate(SKILLS):
+            col, row = i % 3, i // 3
+            x = lay.skills_origin[0] + col * lay.skills_step[0]
+            y = lay.skills_origin[1] + row * lay.skills_step[1]
+            text = self.read_ink(img, Rect(x + lay.skills_cell[0] // 2, y, lay.skills_cell[0] // 2,
+                                           lay.skills_cell[1]), (255, 255, 0), TEXT_TOL)
+            m = re.search(r"(\d{1,2})\D*$", text)
+            if not m:
+                return None                              # not the Skills tab, or misread
+            out[skill] = int(m[1])
+        return out
+
     def hover(self, img: np.ndarray) -> Hover | None:
         """What the mouse is over, or None for nothing (Walk here)."""
         text, kind = self.read(img, self.layout.hover_text)

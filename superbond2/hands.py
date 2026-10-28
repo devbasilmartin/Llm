@@ -49,6 +49,9 @@ class SimBody:
     def position(self):
         return tuple(self.game.pos)
 
+    def read_levels(self):
+        return self.game.levels()
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -138,6 +141,18 @@ class RealBody:
         """Where he stands: (x, y, floor), from RuneLite's coordinates overlay, or None."""
         position = getattr(self.reader, "position", None)
         return position(self.screen.grab()) if position else None
+
+    def read_levels(self):
+        """Open the Skills tab, read the levels, and go back to the inventory."""
+        from .layout import Layout
+        tabs = Layout().tabs
+        self.click(tabs["skills"])
+        time.sleep(0.6)
+        try:
+            return self.reader.levels(self.screen.grab())
+        finally:
+            self.click(tabs["inventory"])
+            time.sleep(0.3)
 
     def read_dialogue(self):
         """What the dialogue in the chatbox says (a text.Dialogue), or None."""
