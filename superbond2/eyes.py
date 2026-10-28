@@ -75,6 +75,7 @@ class View:
     bank_open: bool = False             # the bank's window covers the 3D view
     dialogue_open: bool = False         # someone's talking, or there's a choice, in the chatbox
     dialogue: object = None             # what it says (text.Dialogue), read only when open
+    position: tuple | None = None       # (x, y, floor) when something can tell
 
     def nearest(self, name: str) -> Highlight | None:
         hits = [h for h in self.highlights if h.name == name]
@@ -219,6 +220,18 @@ def _near(px: int) -> str:
     return "right next to you" if px < 60 else "close" if px < 150 else "far"
 
 
+def nearest_place(pos) -> tuple[str, int] | None:
+    """The closest named place on the same floor, and how many tiles away."""
+    from .actions import load_places
+    best = None
+    for name, (x, y, floor) in load_places().items():
+        if floor == pos[2]:
+            d = max(abs(x - pos[0]), abs(y - pos[1]))
+            if best is None or d < best[1]:
+                best = (name, d)
+    return best
+
+
 BANK_FILL = (73, 64, 52)        # the bank window's background (not measured yet)
 
 
@@ -227,6 +240,12 @@ def describe(view: View, registry: Registry | None = None) -> str:
     if not view.in_game:
         return "Screen: not in the game (login screen, loading, or the client moved)"
     lines = []
+    if view.position is not None:
+        x, y, floor = view.position
+        place = nearest_place(view.position)
+        lines.append(f"Where: {x}, {y}" + (f", floor {floor}" if floor else "") +
+                     (f" (at {place[0]})" if place and place[1] <= 3 else
+                      f" (near {place[0]}, {place[1]} tiles)" if place and place[1] <= 30 else ""))
     if view.hp is not None:
         lines.append(f"HP: {round(view.hp * 100)}%")
     if view.busy is not None:

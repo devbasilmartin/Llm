@@ -99,6 +99,8 @@ class Actions:
         self.body.wait(GLANCE)
         last, self.view = getattr(self, "view", None), self.eyes.look(self.body.grab(), before=first)
         self._name_untagged(self.view)
+        if hasattr(self.body, "position"):
+            self.view.position = self.body.position()
         if self.view.dialogue_open and hasattr(self.body, "read_dialogue"):
             self.view.dialogue = self.body.read_dialogue()
         if last is not None and died(last, self.view):

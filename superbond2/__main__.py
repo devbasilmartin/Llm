@@ -8,6 +8,7 @@
     python -m superbond2 play --model gemma4:12b           # let him play (add --sim to try it first)
     python -m superbond2 hover                             # read the hover text under the mouse
     python -m superbond2 dialogue                          # read the dialogue in the chatbox
+    python -m superbond2 where                             # read his tile from the coordinates overlay
     python -m superbond2 characters                        # the characters he can log into
     python -m superbond2 save-session iron                 # keep the session Bolt started
     python -m superbond2 play --model gemma4:12b --character main  # he can switch to the others
@@ -249,6 +250,27 @@ def hover(_args) -> int:
     return 0
 
 
+def where(_args) -> int:
+    from .eyes import nearest_place
+    from .screen import Screen
+    from .text import Reader
+    reader = Reader()
+    img = Screen.load(ORIGIN).grab()
+    cv2.imwrite("where-raw.png", cv2.cvtColor(reader.layout.position_text.crop(img), cv2.COLOR_RGB2BGR))
+    try:
+        pos = reader.position(img)
+    except RuntimeError as e:
+        print(e)
+        return 1
+    if pos is None:
+        print("Read: no coordinates (is the overlay on, and where layout.position_text looks?)")
+    else:
+        place = nearest_place(pos)
+        print(f"Read: {pos}" + (f", {place[1]} tiles from {place[0]}" if place else ""))
+    print("Saved where-raw.png (what was read).")
+    return 0
+
+
 def dialogue(_args) -> int:
     from .screen import Screen
     from .text import Reader
@@ -340,7 +362,7 @@ def main(argv=None) -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
     for name, fn in (("calibrate", calibrate), ("look", look), ("sim", sim), ("hover", hover),
-                     ("dialogue", dialogue)):
+                     ("dialogue", dialogue), ("where", where)):
         sub.add_parser(name).set_defaults(fn=fn)
     d = sub.add_parser("do", help="one action on the real client, e.g. do click_nearest name=bank")
     d.add_argument("action")

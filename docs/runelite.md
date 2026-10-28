@@ -27,6 +27,11 @@ window has to come back where `calibrate` found it).
 `marked` also has to go into skillbot's `colors.yaml`, so skillbot never hands that color
 to something else: add the line from the bottom of `superbond2/colors.yaml`.
 
+**Where he stands.** `walk_to` and his "Where:" line need his tile on screen as text, like
+`3222, 3218, 0`, in white, just under the hover text at the top left of the 3D view. RuneLite's
+Developer Tools has a Location overlay (it needs developer mode); a Plugin Hub plugin that
+shows tile coordinates works too. Then `python -m superbond2 where` checks it reads.
+
 ## Worth adding
 
 | Plugin | What it gives him |

@@ -17,8 +17,6 @@ Rules for unattended rounds:
 Built and tested on the simulated game; screen positions and colors the real client decides
 are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
 
-- [ ] **2. Where am I.** Position from a RuneLite coordinates overlay (OCR), and a named place
-  for it, in the prompt.
 - [ ] **3. Levels and XP.** Read levels (Skills tab) and XP drops; level-ups to Discord, XP per
   hour in the daily summary.
 - [ ] **14. Equipment.** Wear/wield items, read the equipment tab, in the prompt.
@@ -47,11 +45,16 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   the fast brain.
 - Confirm gemma4:12b as the thoughtful brain.
 - Discord bot set up (docs/discord.md) and `accounts.yaml`.
+- Turn on a coordinates overlay (RuneLite's Developer Tools Location, in developer mode, or a
+  Plugin Hub plugin showing tile coordinates) under the hover text, and run
+  `python -m superbond2 where`; send what it read and `where-raw.png`. walk_to needs it.
 - With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
   send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **2. Where am I**: his tile read from a coordinates overlay (OCR of "3222, 3218, 0"), and a
+  `Where:` line in his prompt with the nearest named place; `python -m superbond2 where` checks it.
 - **12. Vampyre Slayer in the sim**: a world with places (things show near where they are),
   stairs that go somewhere, a cupboard to search, NPC scripts with needs, takes and quest points,
   and a Count who rises again without stake and hammer; played start to finish by a test. Found

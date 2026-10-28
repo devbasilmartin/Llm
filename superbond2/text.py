@@ -127,6 +127,13 @@ class Reader:
             return Dialogue("", "", [(t, at) for t, at in texts if t], more)
         return Dialogue(title, " ".join(t for t, _ in texts if t), [], more)
 
+    def position(self, img: np.ndarray) -> tuple[int, int, int] | None:
+        """(x, y, floor) from a coordinates overlay's text, like "3222, 3218, 0"."""
+        import re
+        text = self.read_ink(img, self.layout.position_text, WHITE, TEXT_TOL)
+        m = re.search(r"(\d{4,5})\D{1,3}(\d{4,5})\D{1,3}(\d)", text)
+        return (int(m[1]), int(m[2]), int(m[3])) if m else None
+
     def hover(self, img: np.ndarray) -> Hover | None:
         """What the mouse is over, or None for nothing (Walk here)."""
         text, kind = self.read(img, self.layout.hover_text)

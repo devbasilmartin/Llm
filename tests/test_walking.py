@@ -116,3 +116,24 @@ def test_diagonal_clicks_stay_on_the_round_minimap():
     cx, cy = lay.minimap_center
     on_map = [p for p in clicks if p != lay.compass]
     assert on_map and all((p[0] - cx) ** 2 + (p[1] - cy) ** 2 <= lay.minimap_radius ** 2 for p in on_map)
+
+
+# --- where am I ---------------------------------------------------------------------------------
+def test_reading_the_coordinates_overlay():
+    import numpy as np
+    from superbond2.text import Reader
+    reader = Reader(ocr=lambda pic: "Tile: 3222, 3218, 0")
+    img = np.full((503, 765, 3), (60, 90, 40), np.uint8)
+    r = reader.layout.position_text
+    img[r.y + 4:r.y + 12, r.x + 4:r.x + 120] = (255, 255, 255)     # white text
+    assert reader.position(img) == (3222, 3218, 0)
+    assert Reader(ocr=lambda pic: "Loading...").position(img) is None
+
+
+def test_where_he_is_in_the_prompt():
+    from superbond2.eyes import describe
+    game = lumbridge()
+    act = Actions(SimBody(game), EYES)
+    assert describe(act.look()).startswith("Where: 3222, 3218 (at lumbridge castle)")
+    game.pos[:] = [3100, 3250, 0]
+    assert describe(act.look()).startswith("Where: 3100, 3250 (near draynor bank, 7 tiles)")
