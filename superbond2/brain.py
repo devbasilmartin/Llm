@@ -193,6 +193,7 @@ FAST_NAMES = {t["function"]["name"] for t in FAST_TOOLS}
 BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_routine", "switch_character")]
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
+FAIL_WINDOW = 15            # turns a failure is remembered for
 HINT_AFTER = 3              # the same call failing the same way: a hint, and a thoughtful turn
 REFUSE_AFTER = 5            # ...and after this many, it isn't run again until something changes
 STUCK_TURNS = 8             # turns with nothing at all changing on screen: probably stuck
@@ -213,6 +214,11 @@ JOURNAL_EVERY = 20          # turns without a journal entry before the prompt re
 SWITCH_COOLDOWN = 20        # turns on an account before he can switch again
 WIKI_TURNS = 6              # turns a wiki page he read stays in his prompt
 GAINED = re.compile(r"\+\d+ ([a-z][a-z' ]*?)(?=;|\.|\)|$)")
+
+
+def call_line(name: str, args: dict) -> str:
+    """A call as he'd read it: talk_to(Morgan)."""
+    return f"{name}({', '.join(str(v) for v in args.values())})"
 
 
 def step_line(name: str, args: dict) -> str:
@@ -420,7 +426,7 @@ class Brain:
         self.levels_read = -LEVELS_EVERY            # the turn levels were last read
         self.still: tuple = (None, 0)               # the screen's signature, and turns unchanged
         self.slept = -10 ** 6                       # the turn he last slept on his notes
-        self.failing: tuple = ("", "", 0)           # a call, how it failed, and how many times running
+        self.failed: list[tuple] = []               # recent failures: (turn, call key, call, result)
         if wiki is not None:                        # sales are checked against the wiki
             actions.value_of = wiki.value
             actions.ge_price_of = wiki.ge_price
@@ -482,6 +488,8 @@ class Brain:
         if self.turns - self.journaled >= JOURNAL_EVERY:
             lines += ["", f"It's been {self.turns - self.journaled} turns since you last wrote in "
                       "your journal. When you get a moment: what's been the best part so far?"]
+        if self.not_working():
+            lines += ["", self.not_working()]
         lines += ["", "Now:", describe(view)]
         return "\n".join(lines)
 
@@ -496,6 +504,8 @@ class Brain:
                  else "(none yet)", "", "Recent turns, oldest first:"]
         lines += [r if len(r) <= FAST_LINE else r[:FAST_LINE - 3] + "..."
                   for r in self.recent[-FAST_RECENT:]] or ["(this is your first turn)"]
+        if self.not_working():
+            lines += ["", self.not_working()]
         lines += ["", "Now:", describe(view)]
         return "\n".join(lines)
 
@@ -626,21 +636,20 @@ class Brain:
         if brain == "fast" and name not in FAST_NAMES:
             self.need_thought = f"you wanted to {name}"
             result = Result(True, f"{name} is for when you think it over; you will next turn")
-        elif self.failing[0] == key and self.failing[2] >= REFUSE_AFTER:
-            result = Result(False, f"not again: {name} has failed {self.failing[2]} times in a row "
+        elif self._failures(key) >= REFUSE_AFTER:
+            result = Result(False, f"not again: {name} has failed {self._failures(key)} times lately "
                                    "the same way. Do something different")
             self.need_thought = f"{name} keeps failing the same way"
         else:
             result = self.dispatch(name, args)
             if result.ok:
-                self.failing = ("", "", 0)
+                self.failed = [f for f in self.failed if f[1] != key]
             else:
-                same = self.failing[:2] == (key, result.said)
-                self.failing = (key, result.said, self.failing[2] + 1 if same else 1)
-                if self.failing[2] == HINT_AFTER:
-                    result.said += (f" (that's failed {HINT_AFTER} times in a row the same way: "
+                self.failed.append((self.turns, key, call_line(name, args), result.said))
+                if self._failures(key) == HINT_AFTER:
+                    result.said += (f" (that's failed {HINT_AFTER} times lately the same way: "
                                     "try something else)")
-                    self.need_thought = f"{name} failed {HINT_AFTER} times in a row the same way"
+                    self.need_thought = f"{name} failed {HINT_AFTER} times lately the same way"
         if len(reply.calls) > 1:
             result.said += " (only your first tool call is done each turn)"
         firsts = [item for item in dict.fromkeys(GAINED.findall(result.said))
@@ -835,6 +844,21 @@ class Brain:
         self.owner.tell(f"🛌 Tidied my notebook: {replaced} notes into {kept} lessons.")
         return self._record(Turn(self.turns, "consolidate", {"lessons": len(lessons)}, said, True,
                                  reply.seconds), prompt, reply)
+
+    def _failures(self, key: str) -> int:
+        """How often this call has failed in the last FAIL_WINDOW turns."""
+        self.failed = [f for f in self.failed if self.turns - f[0] < FAIL_WINDOW]
+        return sum(f[1] == key for f in self.failed)
+
+    def not_working(self) -> str | None:
+        """For the prompt: calls that keep failing lately, how, and how often."""
+        self._failures("")
+        seen: dict[str, tuple[int, str]] = {}
+        for _, key, call, said in self.failed:
+            n, _ = seen.get(call, (0, ""))
+            seen[call] = (n + 1, said)
+        lines = [f"- {call}: failed {n}x: {said[:200]}" for call, (n, said) in seen.items() if n >= 2]
+        return ("Not working lately (do something else):\n" + "\n".join(lines)) if lines else None
 
     def notice_stuck(self, view: View) -> None:
         """Nothing at all changing for many turns: hand over to the thoughtful brain, and tell

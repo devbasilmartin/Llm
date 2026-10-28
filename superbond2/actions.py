@@ -640,6 +640,8 @@ class Actions:
         if here is None:
             return Result(False, "I can't tell where I am: RuneLite's coordinates overlay isn't "
                                  "being read yet")
+        if max(abs(tx - here[0]), abs(ty - here[1])) <= ARRIVED and here[2] == floor:
+            return Result(False, f"you're already at {name}")
         if here[2] != floor:
             return Result(False, f"{name} is on floor {floor} and you're on floor {here[2]}: "
                                  "stairs or a ladder first")

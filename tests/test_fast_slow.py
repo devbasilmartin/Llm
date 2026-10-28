@@ -366,12 +366,15 @@ def test_one_turning_up_mid_routine_doesnt_stop_it(game, memory):
 
 def test_the_same_failure_gets_a_hint_then_a_refusal(game, memory):
     from superbond2.brain import HINT_AFTER, REFUSE_AFTER
-    nope = ("talk_to", {"name": "Morgan"})
-    fast = Scripted(*[nope] * 8)
-    slow = Scripted(*[nope] * 8)
+    nope, there = ("talk_to", {"name": "Morgan"}), ("walk_to", {"place": "lumbridge castle"})
+    script = [nope, there] * 8                       # taking turns doesn't hide it
+    fast, slow = Scripted(*script), Scripted(*script)
     b = two(game, memory, fast, slow)
     b.journaled = 10 ** 6
-    results = [b.turn().result for _ in range(REFUSE_AFTER + 1)]
+    results = [b.turn().result for _ in range(2 * REFUSE_AFTER + 1)]
     assert "There's a place by that name: walk_to morgan's house" in results[0]
-    assert results[HINT_AFTER - 1].endswith("try something else)")
-    assert results[REFUSE_AFTER].startswith(f"not again: talk_to has failed {REFUSE_AFTER} times")
+    assert results[1] == "you're already at lumbridge castle"
+    assert results[2 * (HINT_AFTER - 1)].endswith("try something else)")
+    assert results[2 * REFUSE_AFTER].startswith(f"not again: talk_to has failed {REFUSE_AFTER} times")
+    prompt = (fast.prompts + slow.prompts)[-1]
+    assert "Not working lately (do something else):\n- talk_to(Morgan): failed" in prompt
