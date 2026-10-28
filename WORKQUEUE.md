@@ -19,8 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **21. Memory sleep.** Now and then the thoughtful brain boils old notes down into lessons
-  so the notebook stays short.
 - [ ] **11. Quest points and the quest log.** Read them, track them toward Dragon Slayer's 32.
 - [ ] **10. Quest Helper.** Read its step text and follow its `quest_target` highlights.
 - [ ] **16. The Grand Exchange.** Buy and sell with wiki prices and guard rails (no selling
@@ -52,6 +50,9 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 ## Done
 
+- **21. Memory sleep**: at 60 notes the thoughtful brain gets a turn to boil the older ones
+  (not the offer, not the newest 10) into at most 20 lessons; the old notes go to
+  notebook-archive.md, and the owner gets a 🛌 line.
 - **22. Random events**: a reflex dismisses anything highlighted `random_event` (Dismiss from
   its menu), between turns and mid-routine, and tells him; the routine carries on.
 - **23. Stuck detector**: the screen's signature (place, inventory, highlights, HP, dialogue)

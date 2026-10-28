@@ -233,6 +233,10 @@ remembered in `firsts.yaml`), and after 20 turns without a journal entry the pro
 what's been the best part so far. (Whether he feels any of it, nobody can say; this is what
 he pays attention to and how he talks about it.)
 
+**Sleeping on it.** Once his notebook reaches 60 notes, the thoughtful brain gets a turn to
+boil the older ones down into at most 20 lessons (the offer and his newest 10 notes stay as
+they are); the old notes go to `notebook-archive.md`, so nothing is lost.
+
 His memory is plain files (`data/memory/`, or `data/sim-memory/` with `--sim`):
 `notebook.md`, `journal.md`, `goals.yaml`, `reflexes.yaml`, `firsts.yaml`,
 `decisions.jsonl` and `routines/`. The notebook starts with who he is and your offer.

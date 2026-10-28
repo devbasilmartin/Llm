@@ -1,6 +1,7 @@
 """superbond2's memory: plain files you can open and read.
 
     notebook.md       what he's learned, in his own words (it starts with who he is and your offer)
+    notebook-archive.md  older notes, after he boiled them down into lessons
     firsts.yaml       the first time he got each item
     journal.md        his diary
     goals.yaml        the goal he's on, and the ones before it
@@ -53,6 +54,7 @@ class Memory:
         self.folder = Path(folder)
         self.folder.mkdir(parents=True, exist_ok=True)
         self.notebook_file = self.folder / "notebook.md"
+        self.archive_file = self.folder / "notebook-archive.md"
         self.journal_file = self.folder / "journal.md"
         self.goals_file = self.folder / "goals.yaml"
         self.reflex_file = self.folder / "reflexes.yaml"
@@ -83,6 +85,20 @@ class Memory:
         with self.notebook_file.open("a") as f:
             f.write(f"- {text}\n")
         return "noted"
+
+    def consolidate(self, lessons: list[str], keep_newest: int = 10) -> tuple[int, int]:
+        """Replace the older notes (not the offer, not the newest few) with `lessons`; the old
+        ones go to notebook-archive.md. Returns (notes replaced, lessons kept)."""
+        notes = self.notes()
+        head, old, new = notes[:len(OFFER)], notes[len(OFFER):-keep_newest], notes[-keep_newest:]
+        lessons = list(dict.fromkeys(" ".join(str(x).split())[:MAX_NOTE] for x in lessons if str(x).strip()))
+        if not old or not lessons:
+            return 0, 0
+        with self.archive_file.open("a") as f:
+            f.write(f"## Before {_now()}\n\n" + "".join(f"- {n}\n" for n in old) + "\n")
+        self.notebook_file.write_text("# superbond2's notebook\n\n" +
+                                      "".join(f"- {n}\n" for n in head + lessons + new))
+        return len(old), len(lessons)
 
     # --- accounts -------------------------------------------------------------------------
     def play_as(self, account: str | None) -> None:

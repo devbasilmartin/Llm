@@ -3,8 +3,8 @@ import json
 import pytest
 
 from superbond2.actions import Actions
-from superbond2.brain import (BACKGROUND_TOOLS, FAST_SYSTEM, FAST_TOOLS, SYSTEM, TOOL_NAMES, TOOLS,
-                              Brain, Owner)
+from superbond2.brain import (BACKGROUND_TOOLS, FAST_SYSTEM, FAST_TOOLS, SLEEP_TOOLS, SYSTEM,
+                              TOOL_NAMES, TOOLS, Brain, Owner)
 from superbond2.eyes import Eyes
 from superbond2.hands import SimBody, Stopped
 from superbond2.memory import Memory
@@ -35,7 +35,8 @@ class Scripted:
         self.script, self.prompts, self.kinds = list(script), [], []
 
     def chat(self, messages, tools):
-        kind = {id(TOOLS): "slow", id(FAST_TOOLS): "fast", id(BACKGROUND_TOOLS): "background"}[id(tools)]
+        kind = {id(TOOLS): "slow", id(FAST_TOOLS): "fast", id(BACKGROUND_TOOLS): "background",
+                id(SLEEP_TOOLS): "sleep"}[id(tools)]
         assert messages[0]["content"] == (FAST_SYSTEM if kind == "fast" else SYSTEM)
         self.kinds.append(kind)
         self.prompts.append(messages[1]["content"])
@@ -397,3 +398,23 @@ def test_a_routine_failing_the_same_way_twice_is_pointed_out(game, memory):
     first, second = b.turn().result, b.turn().result
     assert "failed the same way last time" not in first
     assert second.endswith("(it failed the same way last time: fix it with save_routine, or do something else)")
+
+
+def test_he_sleeps_on_a_long_notebook(game, memory):
+    from superbond2.brain import SLEEP_AT, SLEEP_KEEP
+    from superbond2.memory import OFFER
+    for i in range(SLEEP_AT):
+        memory.add_note(f"note {i}: oaks respawn in about {i} seconds")
+    lessons = ["Oaks respawn fast near Lumbridge.", "Bank before the inventory is full."]
+    said = []
+    b = brain(game, memory, ("consolidate", {"lessons": lessons}), ("wait", {"seconds": 1}), said=said)
+    t = b.turn()
+    assert t.ok and t.result.startswith("slept on it: ") and "became 2 lessons" in t.result
+    notes = memory.notes()
+    assert OFFER[0][:40] in notes[0]                  # the offer stays first
+    assert notes[len(OFFER):len(OFFER) + 2] == lessons
+    assert len(notes) == len(OFFER) + 2 + SLEEP_KEEP and notes[-1].startswith(f"note {SLEEP_AT - 1}:")
+    assert "note 0: oaks" in memory.archive_file.read_text()
+    assert any("🛌 Tidied my notebook" in m for m in said)
+    b.turn()                                          # back to playing
+    assert "Oaks respawn fast near Lumbridge." in b.model.prompts[1]

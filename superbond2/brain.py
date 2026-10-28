@@ -165,6 +165,23 @@ OWN_TOOLS = [
                                                              "this percent (0 turns it off)."},
         }}}},
 ]
+SLEEP_TOOLS = [{"type": "function", "function": {
+    "name": "consolidate",
+    "description": "Replace your older notes with a few lessons that keep what matters.",
+    "parameters": {"type": "object", "required": ["lessons"], "properties": {
+        "lessons": {"type": "array", "items": {"type": "string"},
+                    "description": "Up to 20 short lessons, in your own words."}}}}}]
+SLEEP_PROMPT = """\
+Your notebook is getting long, and you only ever see the newest notes. Time to sleep on it:
+read your older notes below and boil them down into at most 20 short lessons that keep what
+matters (facts you'll need, mistakes not to repeat, what you love doing). Drop what's out of
+date, merge what repeats. Call consolidate with the lessons. The old notes are archived, not lost.
+
+Your older notes:
+"""
+SLEEP_AT = 60               # notes in the notebook before he sleeps on them
+SLEEP_KEEP = 10             # the newest notes stay as they are
+
 THINK_IT_OVER = _spec("think_it_over", "Hand the next turn to your thoughtful self, for "
                       "something that needs real thought.", why="What needs thinking about.")
 TOOLS = ACTIONS + OWN_TOOLS
@@ -387,6 +404,7 @@ class Brain:
         self.background_min = BACKGROUND_MIN
         self.levels_read = -LEVELS_EVERY            # the turn levels were last read
         self.still: tuple = (None, 0)               # the screen's signature, and turns unchanged
+        self.slept = -10 ** 6                       # the turn he last slept on his notes
         if wiki is not None:                        # shop sales are checked against the wiki
             actions.value_of = wiki.value
         self.session, self.character = session, character     # to log back in if dropped
@@ -555,6 +573,8 @@ class Brain:
             self.collect(wait=600)  # still thinking from the last routine: one model at a time
             view = self.actions.look()              # the screen has moved on while it thought
         self.notice_stuck(view)
+        if len(self.memory.notes()) >= SLEEP_AT and self.turns - self.slept >= 20:
+            return self.sleep()
         why = self.which()
         brain = "fast" if not why else "slow"
         if brain == "fast":
@@ -755,6 +775,30 @@ class Brain:
                          "prompt_tokens": reply.prompt_tokens if reply else 0, "state": prompt})
         self.say(f"[{turn.number}] {what} -> {turn.result}")
         return turn
+
+    def sleep(self) -> Turn:
+        """A turn for boiling the older notes down into lessons."""
+        from .memory import OFFER
+        self.slept = self.turns
+        old = self.memory.notes()[len(OFFER):-SLEEP_KEEP]
+        prompt = SLEEP_PROMPT + "\n".join(f"- {n}" for n in old)
+        try:
+            reply = self.model.chat([{"role": "system", "content": SYSTEM},
+                                     {"role": "user", "content": prompt}], SLEEP_TOOLS)
+        except ModelError as e:
+            return self._record(Turn(self.turns, "", {}, f"the model failed: {e}", False, 0), prompt, None)
+        call = next((c for c in reply.calls if c["name"] == "consolidate"), None)
+        lessons = call["arguments"].get("lessons") if call else None
+        if isinstance(lessons, str):
+            lessons = [x for x in lessons.splitlines() if x.strip()]
+        if not lessons:
+            return self._record(Turn(self.turns, "consolidate", {}, "didn't boil anything down",
+                                     False, reply.seconds), prompt, reply)
+        replaced, kept = self.memory.consolidate(lessons[:20], SLEEP_KEEP)
+        said = f"slept on it: {replaced} older notes became {kept} lessons"
+        self.owner.tell(f"🛌 Tidied my notebook: {replaced} notes into {kept} lessons.")
+        return self._record(Turn(self.turns, "consolidate", {"lessons": len(lessons)}, said, True,
+                                 reply.seconds), prompt, reply)
 
     def notice_stuck(self, view: View) -> None:
         """Nothing at all changing for many turns: hand over to the thoughtful brain, and tell
