@@ -175,7 +175,7 @@ class Discord:
 def daily_summary(memory: Memory, day: str) -> str:
     """One post about a day of play (`day` is YYYY-MM-DD), from his decision log, firsts and
     journal."""
-    turns = []
+    turns, deaths = [], []
     if memory.decisions_file.exists():
         for line in memory.decisions_file.read_text().splitlines():
             try:
@@ -183,7 +183,7 @@ def daily_summary(memory: Memory, day: str) -> str:
             except ValueError:
                 continue
             if str(rec.get("at", "")).startswith(day):
-                turns.append(rec)
+                (deaths if rec.get("event") == "death" else turns).append(rec)
     if not turns:
         return f"📅 {day}: no play today."
     routines = [t for t in turns if t.get("tool") == "run_routine"]
@@ -200,6 +200,8 @@ def daily_summary(memory: Memory, day: str) -> str:
              + (f", about {sum(seconds) / len(seconds):.0f} s each" if seconds else "") + "."]
     if routines:
         lines.append(f"Routines: {len(routines)} run, {worked} worked.")
+    if deaths:
+        lines.append(f"💀 Died {len(deaths)} time{'s' if len(deaths) > 1 else ''}.")
     if new:
         lines.append("Firsts: " + ", ".join(new) + ".")
     if goals:

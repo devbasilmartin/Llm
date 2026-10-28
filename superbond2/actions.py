@@ -36,6 +36,15 @@ def as_name(text) -> str:
     return "_".join(str(text).lower().split())
 
 
+def died(before: View, after: View) -> bool:
+    """A death, from two looks: HP was low and is full again (you respawn at full), and most
+    of what he carried is gone (you keep only 3 items)."""
+    if before.hp is None or after.hp is None or not (before.in_game and after.in_game):
+        return False
+    had, has = sum(before.items().values()), sum(after.items().values())
+    return before.hp < 0.4 and after.hp > 0.9 and had >= 4 and has <= max(3, had // 2)
+
+
 def changes(before: View, after: View) -> str:
     """What's different between two looks, in words."""
     if not after.in_game:
@@ -63,6 +72,7 @@ class Actions:
     def __init__(self, body: Body, eyes: Eyes):
         self.body, self.eyes = body, eyes
         self.keep: set[str] = set()         # never banked: his reflex food (the brain sets it)
+        self.deaths: list[list[str]] = []   # each death noticed: what he lost
         self.look()
 
     def look(self) -> View:
@@ -72,7 +82,9 @@ class Actions:
         heartbeat.beat()
         first = self.body.grab()
         self.body.wait(GLANCE)
-        self.view = self.eyes.look(self.body.grab(), before=first)
+        last, self.view = getattr(self, "view", None), self.eyes.look(self.body.grab(), before=first)
+        if last is not None and died(last, self.view):
+            self.deaths.append(sorted((last.items() - self.view.items()).elements()))
         return self.view
 
     def _after(self, before: View, did: str, settle: float = SETTLE) -> Result:

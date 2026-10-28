@@ -14,8 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Deaths.** Notice a death (HP back to full, inventory gone, in the sim: `game.deaths`),
-  tell him, post it on Discord, count it in the daily summary. Done when: tested.
 - [ ] **Bake-off grading, second look.** Check each scenario's accepted answers against the
   failures in the owner's report (wiki-first answers, "drop method" wording). Change only
   what's clearly unfair, and note each change in bench/README.md.
@@ -38,6 +36,8 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Deaths**: noticed between any two looks (also mid-routine, which they stop), told to him
+  with what he lost, posted on Discord, logged, and counted in the daily summary.
 - **Food stays out of the bank**: the sim's bank now works like the real one (a click opens
   it, a click on a slot banks all of that item, Esc closes it), and a `bank` action keeps his
   tools and reflex food. The bank's color is a guess until `look` is run with it open.

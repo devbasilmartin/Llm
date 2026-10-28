@@ -7,6 +7,7 @@ He posts to one channel on your own private server:
 - 🎉 firsts
 - 📓 journal entries
 - switching accounts
+- 💀 deaths, and what he lost
 - ⚠️ problems
 - why he stopped
 - 📅 a daily summary
@@ -91,4 +92,5 @@ ways. After that, `play` uses Discord on its own (`--no-discord` turns it off).
 
 If Discord is down while he plays, he carries on and posts again when it's back.
 
-Not yet posted: deaths and level-ups. He needs eyes for those first.
+💀 Deaths are posted (and counted in the daily summary); level-ups aren't yet, since he
+needs eyes for them first.

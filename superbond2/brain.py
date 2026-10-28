@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+from collections import Counter
 import time
 from dataclasses import dataclass
 from typing import Callable, Protocol
@@ -285,8 +286,11 @@ class Reflexes:
         self.actions, self.memory, self.session = actions, memory, session
         self.last = ""                      # what it did last, for the next prompt
         self.fled: float | None = None      # HP % when he last ran
+        self.deaths_seen = 0                # deaths the brain has already heard about
 
     def __call__(self, view: View) -> str | None:
+        if len(self.actions.deaths) > self.deaths_seen:
+            return "you died"               # nothing left of the plan the routine was for
         r = self.memory.reflexes()
         if view.hp is None:
             return None
@@ -482,6 +486,7 @@ class Brain:
                                          f"failed: {e}", False, 0), "", None)
             view = self.actions.look()
         self.actions.keep = set(self.memory.reflexes()["food"])   # banking keeps his food
+        self.mourn()
         stop = self.reflexes(view)
         if self.reflexes.last:
             self.recent.append(f"{self.turns}. {self.reflexes.last}")
@@ -583,6 +588,7 @@ class Brain:
                 started = time.monotonic()
                 run = Runner(self.actions, guard=self.reflexes).run(routine)
                 m.routines.record(routine, run, time.monotonic() - started)
+                self.mourn()
                 return Result(run.ok, run.said)
             if name == "save_routine":
                 if "routine" in args:                    # the YAML form, for longer routines
@@ -688,6 +694,19 @@ class Brain:
                          "prompt_tokens": reply.prompt_tokens if reply else 0, "state": prompt})
         self.say(f"[{turn.number}] {what} -> {turn.result}")
         return turn
+
+    def mourn(self) -> None:
+        """Deaths the eyes noticed since the last turn: tell him, the owner and the log."""
+        for lost in self.actions.deaths[self.reflexes.deaths_seen:]:
+            what = ", ".join(f"{n} {item.replace('_', ' ')}" for item, n in
+                             Counter(lost).items()) or "nothing much"
+            self.recent.append(f"{self.turns}. 💀 you died! Lost: {what}. You're back at the "
+                               "respawn point with full HP.")
+            self.owner.tell(f"💀 I died{' on ' + self.character if self.character else ''}. "
+                            f"Lost: {what}.")
+            self.memory.log({"event": "death", "turn": self.turns, "lost": lost})
+            self.need_thought = "you died"
+        self.reflexes.deaths_seen = len(self.actions.deaths)
 
     # --- the owner, on Discord -------------------------------------------------------------
     def listen(self) -> None:
