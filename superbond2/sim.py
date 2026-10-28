@@ -93,6 +93,9 @@ class SimGame:
         self.dialogue: dict | None = None
         self.convo: tuple[Thing, str, int] | None = None   # who, which node, which step
         self.flags: set[str] = set()                        # what conversations have set
+        self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
+        self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
+        self.walls: set[tuple[int, int]] = set()            # tiles nobody can walk through
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
     # --- setting up a scene ---------------------------------------------------------------
@@ -115,6 +118,13 @@ class SimGame:
             return self._click_login(pt)
         if self.menu_open is not None:
             return self._choose(pt)
+        lay = self.layout
+        dx, dy = pt[0] - lay.minimap_center[0], pt[1] - lay.minimap_center[1]
+        if dx * dx + dy * dy <= lay.minimap_radius ** 2:     # the minimap: walk there (north up)
+            self.doing, self.bank_open = None, False
+            self.walk_to = (self.pos[0] + round(dx / lay.minimap_tile),
+                            self.pos[1] - round(dy / lay.minimap_tile))
+            return
         if self.bank_open:                  # with quantity "All": a slot banks all of that item
             slot = self.layout.slot_at(pt)
             item = self.inventory[slot] if slot is not None else None
@@ -335,6 +345,14 @@ class SimGame:
                 self._next_action = self.t + 4 * TICK
 
     def _tick(self) -> None:
+        if self.walk_to is not None:                        # a tile a tick, diagonals too
+            x, y = self.pos[0], self.pos[1]
+            tx, ty = self.walk_to
+            step = (x + (tx > x) - (tx < x), y + (ty > y) - (ty < y))
+            if step == (x, y) or step in self.walls:
+                self.walk_to = None                         # there, or a wall in the way
+            else:
+                self.pos[0], self.pos[1] = step
         thing = self.doing
         if thing is not None and not thing.here(self.t):
             thing = self.doing = None                    # someone else got it / it ran out

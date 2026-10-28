@@ -275,6 +275,17 @@ highlights), `continue_dialogue` (space) and `choose` (an option's number or wor
 number keys). All three work as routine steps too. In the sim, NPCs have scripts that can
 give items and set quest flags.
 
+### Getting around
+
+`walk_to <place>` walks to a place in `places.yaml` (banks, towns, mines, Draynor Manor, the
+Port Sarim docks...; tile coordinates, approximate: fix any that are off). It clicks the
+compass (north up), then the minimap towards the place, up to 14 tiles at a time, waits until
+he stops, reads where he is, and goes again, until he's within 2 tiles. No progress three
+clicks running is reported as a wall or a door in the way; another floor needs stairs first.
+It needs to know where he is: in the sim that's the game; on the real client it's RuneLite's
+coordinates overlay, read from the screen (next in the queue). The minimap scale (4 pixels a
+tile) and the compass's place are guesses until checked.
+
 ### Discord
 
 He posts highlights and a daily summary to a private channel, and you can answer, `veto`

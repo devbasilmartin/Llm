@@ -12,6 +12,9 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
 
 from . import heartbeat
 from .eyes import UNTAGGED, Eyes, View
@@ -34,6 +37,17 @@ class Result:
 def as_name(text) -> str:
     """'Oak logs' -> 'oak_logs': reports say names with spaces, the game data uses _."""
     return "_".join(str(text).lower().split())
+
+
+PLACES_FILE = Path(__file__).resolve().parent / "places.yaml"
+ARRIVED = 2                 # tiles from a place that count as there
+WALK_STEP = 14              # tiles per minimap click (the minimap shows about 17 each way)
+MAX_WALK_STEPS = 60
+
+
+def load_places() -> dict[str, tuple[int, int, int]]:
+    raw = yaml.safe_load(PLACES_FILE.read_text()) or {}
+    return {str(k).lower(): tuple(v) for k, v in raw.items()}
 
 
 def died(before: View, after: View) -> bool:
@@ -270,6 +284,55 @@ class Actions:
                                      if held else "")
         return self._after(before, did)
 
+    # --- getting around -----------------------------------------------------------------------
+    def walk_to(self, place: str) -> Result:
+        """Walk to a named place (a bank, a town, a mine...): minimap clicks, a bit at a time."""
+        places = load_places()
+        want = " ".join(str(place).lower().split())
+        name = want if want in places else next((p for p in places if want in p), None)
+        if name is None:
+            return Result(False, f"I don't know a place called {place!r}. Places: {', '.join(places)}")
+        tx, ty, floor = places[name]
+        here = self.body.position() if hasattr(self.body, "position") else None
+        if here is None:
+            return Result(False, "I can't tell where I am: RuneLite's coordinates overlay isn't "
+                                 "being read yet")
+        if here[2] != floor:
+            return Result(False, f"{name} is on floor {floor} and you're on floor {here[2]}: "
+                                 "stairs or a ladder first")
+        lay = self.eyes.layout
+        self.body.click(lay.compass)                    # north up, so the minimap matches the map
+        start, stuck, steps = here, 0, 0
+        while max(abs(tx - here[0]), abs(ty - here[1])) > ARRIVED and steps < MAX_WALK_STEPS:
+            steps += 1
+            dx, dy = tx - here[0], ty - here[1]
+            far = max(abs(dx), abs(dy))
+            k = min(1.0, WALK_STEP / far)
+            pt = (lay.minimap_center[0] + round(dx * k * lay.minimap_tile),
+                  lay.minimap_center[1] - round(dy * k * lay.minimap_tile))
+            self.body.click(pt)
+            last = here
+            for _ in range(30):                          # until he stops moving
+                self.body.wait(1.2)
+                now = self.body.position()
+                if now == last:
+                    break
+                last = now
+            if last is None:
+                return Result(False, "lost track of where I am while walking")
+            stuck = stuck + 1 if max(abs(tx - last[0]), abs(ty - last[1])) >= \
+                max(abs(tx - here[0]), abs(ty - here[1])) else 0
+            here = last
+            if stuck >= 3:
+                self.look()
+                return Result(False, f"stuck at {here[0]}, {here[1]}, {max(abs(tx - here[0]), abs(ty - here[1]))} "
+                                     f"tiles from {name}: a wall or a door in the way?")
+        self.look()
+        if max(abs(tx - here[0]), abs(ty - here[1])) > ARRIVED:
+            return Result(False, f"gave up walking to {name} after {steps} clicks")
+        moved = max(abs(here[0] - start[0]), abs(here[1] - start[1]))
+        return Result(True, f"walked to {name} ({moved} tiles)")
+
     # --- talking ------------------------------------------------------------------------------
     def _said(self) -> str:
         d = self.view.dialogue
@@ -400,6 +463,7 @@ ACTIONS = [
     _spec("inspect", Actions.inspect.__doc__, name="A highlight name, e.g. rock, enemy, marked."),
     _spec("mark", Actions.mark.__doc__, name="A name from your last survey, e.g. Willow tree."),
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
+    _spec("walk_to", Actions.walk_to.__doc__, place="A place name, e.g. draynor bank, grand exchange."),
     _spec("talk_to", Actions.talk_to.__doc__, name="A highlight name or the person's name, e.g. Morgan."),
     {"type": "function", "function": {
         "name": "continue_dialogue", "description": Actions.continue_dialogue.__doc__,

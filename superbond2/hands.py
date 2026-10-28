@@ -46,6 +46,9 @@ class SimBody:
     def read_dialogue(self):
         return self.game.read_dialogue()
 
+    def position(self):
+        return tuple(self.game.pos)
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -130,6 +133,11 @@ class RealBody:
                 self.gui.keyUp("shift")
         time.sleep(0.3)
         return self.reader.menu(self.screen.grab(), pt)
+
+    def position(self):
+        """Where he stands: (x, y, floor), from RuneLite's coordinates overlay, or None."""
+        position = getattr(self.reader, "position", None)
+        return position(self.screen.grab()) if position else None
 
     def read_dialogue(self):
         """What the dialogue in the chatbox says (a text.Dialogue), or None."""

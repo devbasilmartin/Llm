@@ -17,9 +17,6 @@ Rules for unattended rounds:
 Built and tested on the simulated game; screen positions and colors the real client decides
 are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
 
-- [ ] **6. `walk_to <place>`.** Named places with coordinates; walk by clicking the minimap
-  towards the target, checking position as he goes (needs a position readout: the sim's first,
-  then RuneLite's coordinates overlay).
 - [ ] **7. Doors, gates, stairs, ladders.** Through the right-click menu (Open, Climb-up,
   Climb-down); the sim gets a door and a ladder between two floors.
 - [ ] **12. Vampyre Slayer in the sim.** A whole quest, end to end, as a test bed: talk to
@@ -57,6 +54,9 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 ## Done
 
+- **6. `walk_to <place>`**: 17 named F2P places (places.yaml); compass north, then minimap
+  clicks of up to 14 tiles, position read after each; stuck and other-floor cases reported.
+  Works in the sim; on the real client it needs item 2 (the position readout).
 - **9. Talking**: `talk_to` (Talk-to from the right-click menu; a highlight or the NPC's
   name, found by hovering), `continue_dialogue` (space), `choose` (number or words; number
   keys), as actions and routine steps; sim NPCs with scripts that give items and set flags.

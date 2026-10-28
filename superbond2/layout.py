@@ -38,6 +38,8 @@ class Layout:
     viewport: Rect = Rect(4, 4, 512, 334)          # the 3D view; the camera follows the player
     minimap_center: tuple[int, int] = (643, 84)
     minimap_radius: int = 70
+    minimap_tile: int = 4                           # pixels per tile at the default zoom (a guess)
+    compass: tuple[int, int] = (561, 20)            # clicking it turns the camera north (a guess)
     chatbox: Rect = Rect(7, 345, 499, 130)
     # inventory: 4 columns x 7 rows (measured: empty slots are flat panel)
     inv_origin: tuple[int, int] = (563, 213)
