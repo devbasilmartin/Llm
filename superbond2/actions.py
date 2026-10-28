@@ -83,6 +83,8 @@ class Actions:
         first = self.body.grab()
         self.body.wait(GLANCE)
         last, self.view = getattr(self, "view", None), self.eyes.look(self.body.grab(), before=first)
+        if self.view.dialogue_open and hasattr(self.body, "read_dialogue"):
+            self.view.dialogue = self.body.read_dialogue()
         if last is not None and died(last, self.view):
             self.deaths.append(sorted((last.items() - self.view.items()).elements()))
         return self.view

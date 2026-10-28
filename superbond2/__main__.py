@@ -7,6 +7,7 @@
     python -m superbond2 run my-routine.yaml               # a routine (add --sim to try it first)
     python -m superbond2 play --model gemma4:12b           # let him play (add --sim to try it first)
     python -m superbond2 hover                             # read the hover text under the mouse
+    python -m superbond2 dialogue                          # read the dialogue in the chatbox
     python -m superbond2 characters                        # the characters he can log into
     python -m superbond2 save-session iron                 # keep the session Bolt started
     python -m superbond2 play --model gemma4:12b --character main  # he can switch to the others
@@ -246,6 +247,27 @@ def hover(_args) -> int:
     return 0
 
 
+def dialogue(_args) -> int:
+    from .screen import Screen
+    from .text import Reader
+    reader = Reader()
+    img = Screen.load(ORIGIN).grab()
+    cv2.imwrite("dialogue-raw.png", cv2.cvtColor(reader.layout.chatbox.crop(img), cv2.COLOR_RGB2BGR))
+    try:
+        d = reader.dialogue(img)
+    except RuntimeError as e:
+        print(e)
+        return 1
+    if d is None:
+        print("Read: no dialogue (the chatbox's top line has no dark red title)")
+    elif d.options:
+        print("Read options: " + "; ".join(f"{i}. {t} at {at}" for i, (t, at) in enumerate(d.options, 1)))
+    else:
+        print(f"Read: {d.speaker}: {d.text!r}" + (" (continue)" if d.more else ""))
+    print("Saved dialogue-raw.png (the chatbox). NPCs can say your name: crop it before sending.")
+    return 0
+
+
 def characters(_args) -> int:
     from .characters import PROFILES, SESSIONS, Characters
     c = Characters()
@@ -315,7 +337,8 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="superbond2", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
-    for name, fn in (("calibrate", calibrate), ("look", look), ("sim", sim), ("hover", hover)):
+    for name, fn in (("calibrate", calibrate), ("look", look), ("sim", sim), ("hover", hover),
+                     ("dialogue", dialogue)):
         sub.add_parser(name).set_defaults(fn=fn)
     d = sub.add_parser("do", help="one action on the real client, e.g. do click_nearest name=bank")
     d.add_argument("action")

@@ -17,8 +17,6 @@ Rules for unattended rounds:
 Built and tested on the simulated game; screen positions and colors the real client decides
 are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the owner*.
 
-- [ ] **1. Dialogue reading.** The eyes read the NPC dialogue box: who's talking, what they
-  say, "Click here to continue", and numbered options. In the sim and the prompt.
 - [ ] **9. Talking: `talk_to`, `choose`, `continue`.** Actions (and routine steps) to start a
   conversation, pick an option by number or text, and click through.
 - [ ] **6. `walk_to <place>`.** Named places with coordinates; walk by clicking the minimap
@@ -56,9 +54,14 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
   the fast brain.
 - Confirm gemma4:12b as the thoughtful brain.
 - Discord bot set up (docs/discord.md) and `accounts.yaml`.
+- With an NPC talking, and again with a choice of options: `python -m superbond2 dialogue`;
+  send what it read and `dialogue-raw.png` (crop out your name). Confirms dialogue colors and lines.
 
 ## Done
 
+- **1. Dialogue reading**: the eyes notice a dialogue by its dark-red title, then the reader
+  gets speaker, text, options (with where to click) and the continue line; in the sim and the
+  prompt. `python -m superbond2 dialogue` for the real-client check.
 - **Learning track 3**: `learn/README.md`, how a GPT works in plain words, part by part,
   using the tiny one and its first run (written for a phone).
 - **Learning track 2** (9509c1c): `learn/gpt.py`, a character-level GPT in numpy with the

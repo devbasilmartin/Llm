@@ -43,6 +43,9 @@ class SimBody:
     def close_menu(self) -> None:
         self.game.menu_open = None
 
+    def read_dialogue(self):
+        return self.game.read_dialogue()
+
     def grab(self) -> np.ndarray:
         return self.game.grab()
 
@@ -127,6 +130,10 @@ class RealBody:
                 self.gui.keyUp("shift")
         time.sleep(0.3)
         return self.reader.menu(self.screen.grab(), pt)
+
+    def read_dialogue(self):
+        """What the dialogue in the chatbox says (a text.Dialogue), or None."""
+        return self.reader.dialogue(self.screen.grab())
 
     def close_menu(self) -> None:
         """Moving away from a menu closes it."""

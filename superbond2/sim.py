@@ -86,6 +86,8 @@ class SimGame:
         self._tab = "inventory"
         self.menu_open: tuple[Thing | None, list] | None = None
         self.bank_open = False               # clicking a booth opens it, like the real game
+        # a dialogue in the chatbox: {"speaker", "text", "options", "more"}, or None
+        self.dialogue: dict | None = None
         self._frame = np.array(json.loads(FRAME_FILE.read_text()), dtype=np.int32)
 
     # --- setting up a scene ---------------------------------------------------------------
@@ -185,6 +187,54 @@ class SimGame:
                 for i, o in enumerate(options)]
         self.menu_open = (thing, rows)
         return rows
+
+    # --- dialogue -------------------------------------------------------------------------
+    PARCHMENT = (194, 178, 145)          # the chatbox's background while someone talks
+    LINE = 16                            # pixels per line of dialogue text
+
+    def _dialogue_lines(self) -> list[str]:
+        d = self.dialogue
+        if d.get("options"):
+            return list(d["options"])
+        words, lines, line = d["text"].split(), [], ""
+        for w in words:                                  # wrap like the chatbox does
+            if len(line) + len(w) + 1 > 60 and line:
+                lines.append(line)
+                line = w
+            else:
+                line = f"{line} {w}".strip()
+        return lines + [line] if line else lines
+
+    def _line_center(self, i: int) -> tuple[int, int]:
+        from .text import TITLE_BAND
+        box = self.layout.chatbox
+        return box.x + box.w // 2, box.y + TITLE_BAND + 10 + i * self.LINE
+
+    def read_dialogue(self):
+        """What the dialogue says, the way the eyes would read it."""
+        from .text import Dialogue
+        d = self.dialogue
+        if d is None:
+            return None
+        if d.get("options"):
+            return Dialogue("", "", [(o, self._line_center(i)) for i, o in enumerate(d["options"])],
+                            False)
+        return Dialogue(d["speaker"], d["text"], [], bool(d.get("more")))
+
+    def _draw_dialogue(self, img) -> None:
+        from .text import CONTINUE, INK_BLACK, TITLE
+        box, d = self.layout.chatbox, self.dialogue
+        img[box.y:box.y + box.h, box.x:box.x + box.w] = self.PARCHMENT
+        title = "Select an Option" if d.get("options") else d["speaker"]
+        w = 7 * len(title)
+        cx = box.x + box.w // 2
+        img[box.y + 5:box.y + 13, cx - w // 2:cx + w // 2] = TITLE
+        for i, line in enumerate(self._dialogue_lines()[:5]):
+            x, y = self._line_center(i)
+            w = min(box.w - 20, 6 * len(line))
+            img[y - 4:y + 4, x - w // 2:x + w // 2] = INK_BLACK
+        if d.get("more"):
+            img[box.y + box.h - 14:box.y + box.h - 6, cx - 70:cx + 70] = CONTINUE
 
     def _choose(self, pt) -> None:
         thing, rows = self.menu_open
@@ -307,6 +357,8 @@ class SimGame:
             if item is not None:
                 self._draw_item(img, i, item)
         self._draw_hp(img)
+        if self.dialogue is not None:
+            self._draw_dialogue(img)
         return img
 
     def _draw_thing(self, img, thing: Thing) -> None:

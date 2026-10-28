@@ -23,6 +23,13 @@ KINDS = {"object": (0, 255, 255), "npc": (255, 255, 0), "item": (255, 144, 64)}
 TEXT_TOL = 40
 MENU_FILL = (93, 84, 71)          # a menu's background (measured by skillbot)
 NOTHING = ("walk here", "cancel")
+# dialogue in the chatbox (fixed mode; not measured yet): the speaker or "Select an Option" in
+# dark red at the top, the words in black, "Click here to continue" in blue at the bottom
+TITLE = (128, 0, 0)
+INK_BLACK = (0, 0, 0)
+CONTINUE = (0, 0, 255)
+TITLE_BAND = 20             # pixels at the top of the chatbox where the title goes
+LINE_GAP = 3                # blank pixel rows that end a line of text
 
 
 @dataclass
@@ -30,6 +37,14 @@ class Hover:
     text: str                       # "Chop down Oak tree"
     name: str                       # "Oak tree"
     kind: str                       # object / npc / item / player
+
+
+@dataclass
+class Dialogue:
+    speaker: str                    # who's talking ("" for a list of options)
+    text: str                       # what they say
+    options: list                   # [(option text, where to click it)] when there's a choice
+    more: bool                      # "Click here to continue"
 
 
 def _mask(img: np.ndarray, rgb, tol: int = TEXT_TOL) -> np.ndarray:
@@ -72,6 +87,45 @@ class Reader:
                 self._seen.clear()
             self._seen[key] = " ".join(self.ocr(pic).split())
         return self._seen[key], kind
+
+    def read_ink(self, img: np.ndarray, rect: Rect, rgb, tol: int = 30) -> str:
+        """The text drawn in one color inside `rect`, black on white, 4x bigger."""
+        ink = _mask(rect.crop(img), rgb, tol)
+        if ink.sum() < 20:
+            return ""
+        pic = cv2.resize(np.where(ink, 0, 255).astype(np.uint8), None, fx=4, fy=4,
+                         interpolation=cv2.INTER_NEAREST)
+        key = pic.tobytes()
+        if key not in self._seen:
+            self._seen[key] = " ".join(self.ocr(pic).split())
+        return self._seen[key]
+
+    def dialogue(self, img: np.ndarray) -> Dialogue | None:
+        """The dialogue in the chatbox: who, what, the options or the continue line."""
+        box = self.layout.chatbox
+        top = Rect(box.x, box.y, box.w, TITLE_BAND)
+        title = self.read_ink(img, top, TITLE)
+        if not title:
+            return None
+        body = Rect(box.x, box.y + TITLE_BAND, box.w, box.h - TITLE_BAND)
+        ink = _mask(body.crop(img), INK_BLACK, 30).any(axis=1)
+        lines, start, blank = [], None, 0
+        for y, on in enumerate(list(ink) + [False] * (LINE_GAP + 1)):
+            if on:
+                start, blank = (y if start is None else start), 0
+            elif start is not None:
+                blank += 1
+                if blank > LINE_GAP:
+                    lines.append((start, y - blank + 1))
+                    start, blank = None, 0
+        texts = []
+        for y0, y1 in lines:
+            row = Rect(box.x, body.y + y0 - 1, box.w, y1 - y0 + 2)
+            texts.append((self.read_ink(img, row, INK_BLACK), (box.x + box.w // 2, body.y + (y0 + y1) // 2)))
+        more = _mask(body.crop(img), CONTINUE, 30).sum() >= 20
+        if title.lower().startswith("select an option"):
+            return Dialogue("", "", [(t, at) for t, at in texts if t], more)
+        return Dialogue(title, " ".join(t for t, _ in texts if t), [], more)
 
     def hover(self, img: np.ndarray) -> Hover | None:
         """What the mouse is over, or None for nothing (Walk here)."""

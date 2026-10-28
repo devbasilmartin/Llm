@@ -261,6 +261,15 @@ also lists the RuneLite settings and plugins that help him (and the ones to be c
 The hover text position and the menu rows aren't measured on the real client yet:
 `python -m superbond2 hover` reads what's under the mouse and saves the picture.
 
+### Dialogue
+
+When someone talks, the chatbox shows their name in dark red, their words in black and
+"Click here to continue" in blue; a choice has "Select an Option" in dark red and the options
+in black. The eyes notice the dark red title (cheap), and only then is the text read (OCR on
+the real client). His prompt shows `Dialogue: Morgan: "..." (more: press space to continue)`
+or `Dialogue: choose one: 1. ...; 2. ...`. The colors and line spacing aren't measured on the
+real client yet: `python -m superbond2 dialogue` reads one and saves the chatbox.
+
 ### Discord
 
 He posts highlights and a daily summary to a private channel, and you can answer, `veto`
