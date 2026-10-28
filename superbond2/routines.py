@@ -49,13 +49,13 @@ from .layout import SLOTS
 
 ACTION_NAMES = ["click_nearest", "click_item", "click_slot", "drop_all", "press", "wait",
                 "wait_until_idle", "bank", "talk_to", "continue_dialogue", "choose",
-                "walk_to", "interact", "equip", "unequip"]
+                "walk_to", "interact", "equip", "unequip", "use"]
                                          # the ones a routine step can use
 INT_ACTIONS = {"click_slot", "wait", "wait_until_idle"}
 ARG = {"click_nearest": "name", "click_item": "item", "click_slot": "slot", "drop_all": "item",
        "press": "key", "wait": "seconds", "wait_until_idle": "timeout", "bank": "keep",
        "talk_to": "name", "continue_dialogue": "", "choose": "option", "walk_to": "place", "interact": "target",
-       "equip": "item", "unequip": "item"}
+       "equip": "item", "unequip": "item", "use": "item"}
 OPTIONAL_ARG = {"bank", "continue_dialogue"}  # steps that work with nothing after them
 MAX_STEPS = 40          # in the whole routine, counting nested ones
 MAX_DEPTH = 4

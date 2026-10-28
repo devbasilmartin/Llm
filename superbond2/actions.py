@@ -305,6 +305,48 @@ class Actions:
                                      if held else "")
         return self._after(before, did)
 
+    # --- using one thing on another ---------------------------------------------------------
+    def use(self, item: str, on: str = "") -> Result:
+        """Use an item on another item or on something nearby: a tinderbox on logs (lights a
+        fire), raw fish on a fire or range (cooks all of it), a knife on logs..."""
+        if not on:                                       # a routine step: "tinderbox on logs"
+            item, _, on = str(item).partition(" on ")
+        item, before = as_name(item), self.view
+        now = self.look()
+        slots = now.slots_with(item)
+        if not slots:
+            return Result(False, f"no {item} in your inventory")
+        pt = None
+        others = [i for i in now.slots_with(as_name(on)) if i != slots[0]]
+        if others:
+            pt = self.eyes.layout.slot(others[0]).center
+        elif now.nearest(as_name(on)) is not None:
+            pt = now.nearest(as_name(on)).center
+        else:
+            want = str(on).strip().lower()
+            for name, spots in getattr(self, "surveyed", {}).items():
+                if name.lower() == want:
+                    pt = spots[0][0]
+                    break
+        if pt is None:
+            return Result(False, f"no {on} to use it on (in your inventory, highlighted, or in your "
+                                 "last survey)")
+        rows = self.body.open_menu(self.eyes.layout.slot(slots[0]).center)
+        row = next(((t, at) for t, at in rows if t.lower() == "use" or t.lower().startswith("use ")), None)
+        if row is None:
+            self.body.close_menu()
+            return Result(False, f"{item} can't be used on things (its menu: {', '.join(t for t, _ in rows)})")
+        self.body.click(row[1])
+        self.body.wait(0.3)
+        self.body.click(pt)
+        self.body.wait(1.2)
+        view = self.look()
+        if view.dialogue is not None and not view.dialogue.options and \
+                any(w in view.dialogue.text.lower() for w in ("how many", "would you like")):
+            self.body.key("space")                       # make all of them
+            self.wait_until_idle(60)
+        return self._after(before, f"used {item.replace('_', ' ')} on {on}", settle=0.6)
+
     # --- equipment ------------------------------------------------------------------------------
     def read_wearing(self) -> dict[str, str]:
         if hasattr(self.body, "read_equipment"):
@@ -563,6 +605,8 @@ ACTIONS = [
     _spec("inspect", Actions.inspect.__doc__, name="A highlight name, e.g. rock, enemy, marked."),
     _spec("mark", Actions.mark.__doc__, name="A name from your last survey, e.g. Willow tree."),
     _spec("wait_until_idle", Actions.wait_until_idle.__doc__, timeout="Give up after this many seconds."),
+    _spec("use", Actions.use.__doc__, item="An item in your inventory, e.g. tinderbox.",
+          on="What to use it on: an item, a highlight or a name from your survey, e.g. logs, range, Fire."),
     _spec("equip", Actions.equip.__doc__, item="An item in your inventory, e.g. bronze sword."),
     _spec("unequip", Actions.unequip.__doc__, item="Something you're wearing, e.g. wooden shield."),
     _spec("walk_to", Actions.walk_to.__doc__, place="A place name, e.g. draynor bank, grand exchange."),

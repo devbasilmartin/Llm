@@ -37,6 +37,10 @@ WEARABLE = {"bronze_sword": ("weapon", "Wield"), "bronze_scimitar": ("weapon", "
             "anti_dragon_shield": ("shield", "Wield"), "bronze_full_helm": ("head", "Wear"),
             "leather_body": ("body", "Wear"), "bronze_platelegs": ("legs", "Wear"),
             "leather_boots": ("feet", "Wear"), "leather_gloves": ("hands", "Wear")}
+# use one on the other: (item, item or thing) -> (what it makes, skill, XP)
+LIGHT = {"logs": 40, "oak_logs": 60, "willow_logs": 90}
+COOK = {"raw_shrimps": ("shrimps", 30), "raw_anchovies": ("anchovies", 30),
+        "raw_trout": ("trout", 70), "raw_beef": ("cooked_meat", 30)}
 FOOD = {"trout": 7, "shrimps": 3, "lobster": 12, "cooked_meat": 3}
 
 
@@ -109,6 +113,8 @@ class SimGame:
         self.quest_points = 0
         self.xp: Counter = Counter()          # skill -> XP
         self.equipment: dict[str, str] = {}   # slot -> item
+        self.using: int | None = None          # "Use" picked on this slot: the next click is what on
+        self.cooking: str | None = None        # raw food waiting on "how many?" (space: all)
         self.pos = [3222, 3218, 0]           # where he stands: x, y (north), floor
         self.walk_to: tuple[int, int] | None = None         # the tile a minimap click aimed at
         self.path: list = []                                # the tiles on the way there
@@ -165,6 +171,11 @@ class SimGame:
                         del self.equipment[where]
             return
         slot = self.layout.slot_at(pt)
+        if self.using is not None:
+            first, self.using = self.inventory[self.using], None
+            target = self.inventory[slot] if slot is not None else \
+                next((t.label.lower() for t in self.things if self._visible(t) and t.box.grow(2).contains(pt)), None)
+            return self._combine(first, target)
         if slot is not None:
             return self._click_slot(slot, shift)
         if not self.layout.viewport.contains(pt):
@@ -188,6 +199,8 @@ class SimGame:
             return
         if self.convo is not None and k != "esc":
             return self._dialogue_key(k)
+        if self.cooking is not None and k == "space":     # "how many?": all of them
+            return self._cook_all()
         if self.dialogue is not None and k == "space":     # a line on its own: gone
             self.dialogue = None
             return
@@ -403,7 +416,9 @@ class SimGame:
         self.menu_open = None
         option = next((o for o, at in rows if abs(at[1] - pt[1]) <= 7 and abs(at[0] - pt[0]) <= 100), None)
         if isinstance(thing, tuple) and thing[0] == "slot":     # an item's menu
-            if option and option.split(" ")[0] in ("Wield", "Wear"):
+            if option == "Use" or (option and option.startswith("Use ")):
+                self.using = thing[1]
+            elif option and option.split(" ")[0] in ("Wield", "Wear"):
                 self._wear(thing[1])
             elif option and option.startswith("Drop"):
                 self.inventory[thing[1]] = None
@@ -455,6 +470,27 @@ class SimGame:
         elif item in FOOD:
             self.inventory[i] = None
             self.hp = min(self.max_hp, self.hp + FOOD[item])
+
+    def _combine(self, first, target) -> None:
+        pair = {first, target}
+        if "tinderbox" in pair and pair - {"tinderbox"} and (pair - {"tinderbox"}).pop() in LIGHT:
+            logs = (pair - {"tinderbox"}).pop()
+            self.inventory[self.inventory.index(logs)] = None
+            self.xp["firemaking"] += LIGHT[logs]
+            self.add("door", "static", 240, 190, 20, 20, label="Fire", verb="Examine", marked=False,
+                     at=tuple(self.pos), respawn=60)
+        elif first in COOK and target in ("fire", "range"):
+            self.cooking = first
+            self.dialogue = {"speaker": "Cooking", "text": f"How many would you like to cook? "
+                             f"(space: all)", "more": False}
+
+    def _cook_all(self) -> None:
+        made, xp = COOK[self.cooking]
+        for i, item in enumerate(self.inventory):
+            if item == self.cooking:
+                self.inventory[i] = made
+                self.xp["cooking"] += xp
+        self.cooking, self.dialogue = None, None
 
     def _wear(self, i: int) -> None:
         item = self.inventory[i]
