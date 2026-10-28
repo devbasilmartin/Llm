@@ -19,8 +19,6 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 - [ ] **13. `use X on Y`.** Item on item, item on object (cooking, firemaking), as an action
   and a routine step.
-- [ ] **23. Stuck detector.** The same screen for many turns: hand over to the thoughtful
-  brain, then tell the owner.
 - [ ] **22. Random events.** Recognise a random event NPC (its highlight or dialogue) and
   dismiss it.
 - [ ] **21. Memory sleep.** Now and then the thoughtful brain boils old notes down into lessons
@@ -54,6 +52,8 @@ are marked unconfirmed, with a `look`/`hover` check added to *Waiting on the own
 
 ## Done
 
+- **23. Stuck detector**: the screen's signature (place, inventory, highlights, HP, dialogue)
+  unchanged for 8 turns hands over to the thoughtful brain and posts ⚠️ once (again at 16).
 - **18. Discord reactions**: goal posts come with a 👎 to tap (a veto), questions with 👍 / 👎
   (yes / no); only the owner's reactions count, each once. The bot needs Add Reactions.
 - **15. Shops**: `trade` (Trade from the shopkeeper's menu), `buy` (finds the item by hovering

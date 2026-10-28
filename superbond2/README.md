@@ -207,6 +207,10 @@ the routine ends, the next turn waits for it. Without `--fast-model`, the big mo
 takes every turn, as before. On Windows, set `OLLAMA_MAX_LOADED_MODELS=2` so
 Ollama keeps both models loaded ([docs/remote.md](../docs/remote.md)).
 
+If nothing at all changes on screen for 8 turns (where he is, his inventory, the highlights,
+HP, dialogue), the next turn goes to the thoughtful brain ("you may be stuck"), and you get one
+⚠️ on Discord (one more at 16).
+
 A few rules keep a confused model from making a mess: a goal can't change within 10 turns
 unless he says it's done or can't be done (every change messages you); he can't ask you a
 second question while the first is unanswered; repeating an action that changes nothing gets

@@ -87,6 +87,7 @@ def test_the_thoughtful_brain_steps_back_in_now_and_then(game, memory):
     b = two(game, memory, fast, slow)
     b.journaled = 10 ** 6                            # (no journal reminder in the way)
     for _ in range(SLOW_EVERY + 1):
+        game.pos[0] += 1                             # (something changes: he isn't stuck)
         b.turn()
     assert slow.kinds == ["slow"]
     assert slow.prompts[0].endswith("time to step back and check how it's going.")
@@ -302,3 +303,32 @@ def test_a_reflex_logout_skips_the_model(game, memory):
     t = b.turn()
     assert t.result == "reflex: fled the fight and logged out" and t.ok
     assert fast.prompts == [] and slow.prompts == []
+
+
+def test_stuck_hands_over_and_tells_the_owner_once(game, memory):
+    from superbond2.brain import STUCK_TURNS
+    told = []
+    waits = [("wait", {"seconds": 1 + i % 2}) for i in range(40)]   # varied: not the repeat hint
+    fast, slow = Scripted(*waits), Scripted(*[WAIT] * 5)
+    b = two(game, memory, fast, slow, Owner(log=told.append))
+    b.journaled = 10 ** 6                                            # no other reason to think
+    for _ in range(STUCK_TURNS):
+        b.turn()
+    assert slow.prompts and slow.prompts[-1].endswith(
+        f"Time to think it over: nothing has changed on screen for {STUCK_TURNS} turns: you may be stuck.")
+    stuck = [m for m in told if "I think I'm stuck" in m]
+    assert stuck == [f"[to owner] ⚠️ I think I'm stuck at 3222, 3218: nothing has changed for {STUCK_TURNS} turns."]
+    b.turn()
+    assert len([m for m in told if "stuck" in m]) == 1                 # not every turn
+
+
+def test_anything_changing_isnt_stuck(game, memory):
+    from superbond2.brain import STUCK_TURNS
+    told = []
+    b = two(game, memory, Scripted(*[("wait", {"seconds": 1 + i % 2}) for i in range(20)]), Scripted(),
+            Owner(log=told.append))
+    b.journaled = 10 ** 6
+    for i in range(STUCK_TURNS + 2):
+        game.pos[0] += 1                                             # walking along
+        b.turn()
+    assert not any("stuck" in m for m in told)

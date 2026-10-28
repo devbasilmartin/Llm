@@ -174,6 +174,7 @@ FAST_NAMES = {t["function"]["name"] for t in FAST_TOOLS}
 BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_routine", "switch_character")]
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
+STUCK_TURNS = 8             # turns with nothing at all changing on screen: probably stuck
 LEVELS_EVERY = 10           # turns between reading the Skills tab (and after every routine)
 BACKGROUND_MIN = 90         # seconds a routine has taken before it gets background thinking:
                             # the big model takes minutes, and two models at once crawl
@@ -380,6 +381,7 @@ class Brain:
         self.background = None              # thinking while a routine plays: (thread, holder)
         self.background_min = BACKGROUND_MIN
         self.levels_read = -LEVELS_EVERY            # the turn levels were last read
+        self.still: tuple = (None, 0)               # the screen's signature, and turns unchanged
         if wiki is not None:                        # shop sales are checked against the wiki
             actions.value_of = wiki.value
         self.session, self.character = session, character     # to log back in if dropped
@@ -547,6 +549,7 @@ class Brain:
         if self.background is not None:
             self.collect(wait=600)  # still thinking from the last routine: one model at a time
             view = self.actions.look()              # the screen has moved on while it thought
+        self.notice_stuck(view)
         why = self.which()
         brain = "fast" if not why else "slow"
         if brain == "fast":
@@ -747,6 +750,20 @@ class Brain:
                          "prompt_tokens": reply.prompt_tokens if reply else 0, "state": prompt})
         self.say(f"[{turn.number}] {what} -> {turn.result}")
         return turn
+
+    def notice_stuck(self, view: View) -> None:
+        """Nothing at all changing for many turns: hand over to the thoughtful brain, and tell
+        the owner (once, and once more if it goes on twice as long)."""
+        d = view.dialogue
+        sig = (view.position, tuple(view.inventory), tuple(sorted(h.name for h in view.highlights)),
+               round((view.hp or 0) * 10), (d.speaker, d.text) if d else None, view.in_game)
+        same = self.still[1] + 1 if sig == self.still[0] else 1
+        self.still = (sig, same)
+        if same in (STUCK_TURNS, 2 * STUCK_TURNS):
+            self.need_thought = f"nothing has changed on screen for {same} turns: you may be stuck"
+            self.recent.append(f"{self.turns}. nothing has changed for {same} turns")
+            where = f" at {view.position[0]}, {view.position[1]}" if view.position else ""
+            self.owner.tell(f"⚠️ I think I'm stuck{where}: nothing has changed for {same} turns.")
 
     def check_levels(self) -> None:
         """Read the levels (the Skills tab), and celebrate what went up."""
