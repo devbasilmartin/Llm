@@ -196,9 +196,11 @@ need thought:
 - for his journal
 - every 15 turns, to step back
 
-When a routine starts, the big model thinks in the background while it plays (the CPU is
-mostly free then): plans, notes, routine fixes, journal entries, wiki reading. It can't use
-game actions, since the screen will have moved on. Without `--fast-model`, the big model
+When a routine that has taken 90 s or more before starts (and the big model hasn't just had a
+turn), the big model thinks in the background while it plays (the CPU is mostly free then): plans, notes, routine fixes, journal entries, wiki reading. It can't use
+game actions, since the screen will have moved on. Two models thinking at once on a CPU
+crawl (in a test run, quick turns went from 5 s to 120 s), so if it's still thinking when
+the routine ends, the next turn waits for it. Without `--fast-model`, the big model
 takes every turn, as before. On Windows, set `OLLAMA_MAX_LOADED_MODELS=2` so
 Ollama keeps both models loaded ([docs/remote.md](../docs/remote.md)).
 
@@ -348,6 +350,11 @@ Then two brains (granite4.1:8b thinking, granite4.1:3b for quick turns, 25 turns
   brought in 27 oak logs a run, 78 actions in one turn.
 - **What went wrong:** the quick brain tried to run a routine nobody had saved, and kept
   copying an old `think_it_over` from its recent turns. Both now hand over or are refused.
+
+Background thinking, 15 turns (same models): quick turns took 5-18 s, and on turn 9 the big
+model thought during a routine. But the sim's routines end in seconds of real time, so it was
+still thinking during the next quick turns, which slowed to about 120 s. Hence the 90 s rule
+and the wait.
 
 ## The simulated game
 

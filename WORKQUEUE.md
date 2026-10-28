@@ -14,10 +14,6 @@ Rules for unattended rounds:
 
 ## Queue
 
-- [ ] **Background thinking that actually runs.** In the first two-brain run it never fired
-  (slow turns kept landing too close to routine starts). Rethink when it starts, so a long
-  routine gets the big model thinking. Done when: a sim run with real models shows it, and
-  tests cover it.
 - [ ] **`!bakeoff` options.** `!bakeoff --think off --only d1 d3 ...`, checked like the other
   arguments. Done when: tested.
 - [ ] **Keep food out of the bank.** Banking deposits everything that isn't a tool, so he
@@ -47,6 +43,11 @@ Rules for unattended rounds:
 
 ## Done
 
+- **Background thinking** (see the commit after 58043a4): starts with routines that have taken
+  90 s or more, 2 turns after a thoughtful one, and stands in for the every-15-turns step back;
+  the next turn waits for it rather than run two models at once. A real-model sim run showed
+  it firing, and showed the cost of overlap (quick turns 5 s -> 120 s). Docs: set
+  `OLLAMA_MAX_LOADED_MODELS=2` on Windows.
 - **Watchdog** (62bfa3d): the helper restarts a `!play` after a crash or 15 minutes without a
   heartbeat (not 10: a thoughtful turn can take 6+ minutes), 3 times an hour at most; clean
   exits are left alone. Also restored ROADMAP.md, whose to-dos and build order an earlier

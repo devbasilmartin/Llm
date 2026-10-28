@@ -27,8 +27,10 @@ def memory(tmp_path):
 
 
 def two(game, memory, fast, slow, owner=None):
-    return Brain(slow, Actions(SimBody(game), EYES), memory, owner or Owner(log=lambda s: None),
-                 log=lambda s: None, fast=fast)
+    b = Brain(slow, Actions(SimBody(game), EYES), memory, owner or Owner(log=lambda s: None),
+              log=lambda s: None, fast=fast)
+    b.background_min = 0                    # the sim's routines are over in a moment
+    return b
 
 
 def test_one_brain_is_always_the_thoughtful_one(game, memory):
@@ -241,3 +243,27 @@ def test_the_fast_brain_reads_short_recent_turns(game, memory):
     b.turn()
     line = next(line for line in fast.prompts[0].splitlines() if line.startswith("9. "))
     assert len(line) == 220 and line.endswith("...")
+
+
+def test_only_long_routines_get_background_thinking(game, memory):
+    from superbond2.brain import BACKGROUND_MIN
+    fast, slow = Scripted(("run_routine", CHOP), ("run_routine", CHOP)), Scripted()
+    b = two(game, memory, fast, slow)
+    b.background_min = BACKGROUND_MIN
+    b.journaled = 10 ** 6
+    b.turns, b.last_slow = 10, 0
+    b.turn()                                         # first run: how long it takes isn't known
+    assert slow.prompts == [] and memory.routines.stats("chop oaks")["seconds"] < BACKGROUND_MIN
+    b.turn()                                         # quick in the sim: still no
+    assert slow.prompts == []
+
+
+def test_routine_times_are_a_running_mean(tmp_path):
+    from superbond2.routines import Library, RunResult
+    lib = Library(tmp_path)
+    from superbond2.routines import simple_routine
+    r = lib.save(simple_routine("chop", "x", ["wait 2"]))
+    ok = RunResult(True, "done", 1, [])
+    lib.record(r, ok, 100)
+    lib.record(r, ok, 200)
+    assert lib.stats("chop")["seconds"] == 130.0

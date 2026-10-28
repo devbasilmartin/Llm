@@ -168,6 +168,8 @@ FAST_NAMES = {t["function"]["name"] for t in FAST_TOOLS}
 BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_routine", "switch_character")]
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
+BACKGROUND_MIN = 90         # seconds a routine has taken before it gets background thinking:
+                            # the big model takes minutes, and two models at once crawl
 BACKGROUND_GAP = 2          # turns after a thoughtful one before a routine gets background thinking
 THINK_COOLDOWN = 3          # turns after a thoughtful one before the fast brain may ask again
 FAST_LINE = 220             # characters of each recent turn the fast brain reads (less to read)
@@ -341,6 +343,7 @@ class Brain:
         self.need_thought = ""              # why the next turn should be the thoughtful one
         self.last_slow = 0                  # the turn the thoughtful brain last had
         self.background = None              # thinking while a routine plays: (thread, holder)
+        self.background_min = BACKGROUND_MIN
         self.session, self.character = session, character     # to log back in if dropped
         self.accounts = accounts or ([character] if character else [])   # ones he may play
         self.switched = 0                                     # the turn he last switched
@@ -485,7 +488,7 @@ class Brain:
             view = self.actions.view
         if stop:
             self.recent.append(f"{self.turns}. reflex: {stop}")
-        self.collect()
+        self.collect(wait=600)      # still thinking from the last routine: one model at a time
         why = self.which()
         brain = "fast" if not why else "slow"
         if brain == "fast":
@@ -493,7 +496,6 @@ class Brain:
         else:
             model, system, tools, prompt = self.model, SYSTEM, TOOLS, self.prompt(view)
             if self.fast is not None:
-                self.collect(wait=600)              # one thoughtful brain at a time
                 prompt += f"\n\nTime to think it over: {why}."
                 self.need_thought, self.last_slow = "", self.turns
         try:
@@ -575,9 +577,11 @@ class Brain:
                 if "steps" in args:                     # a whole routine: save it, then run it
                     self.dispatch("save_routine", args)
                 routine = m.routines.load(str(args["name"]))
-                self._think_in_background(routine.name)
+                if m.routines.stats(routine.name).get("seconds", 0) >= self.background_min:
+                    self._think_in_background(routine.name)   # long enough to think during
+                started = time.monotonic()
                 run = Runner(self.actions, guard=self.reflexes).run(routine)
-                m.routines.record(routine, run)
+                m.routines.record(routine, run, time.monotonic() - started)
                 return Result(run.ok, run.said)
             if name == "save_routine":
                 if "routine" in args:                    # the YAML form, for longer routines

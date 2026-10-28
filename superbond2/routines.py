@@ -392,9 +392,11 @@ class Library:
             return {"runs": 0, "worked": 0, "failed": 0, "last": ""}
         return yaml.safe_load(p.read_text()).get("stats") or {}
 
-    def record(self, routine: Routine, result: RunResult) -> None:
+    def record(self, routine: Routine, result: RunResult, seconds: float | None = None) -> None:
         s = self.stats(routine.name)
         s["runs"] = s.get("runs", 0) + 1
+        if seconds is not None:                 # how long it takes, in real time (a running mean)
+            s["seconds"] = round(seconds if "seconds" not in s else 0.7 * s["seconds"] + 0.3 * seconds, 1)
         key = "worked" if result.ok else "failed"
         s[key] = s.get(key, 0) + 1
         s["last"] = result.said[:300]
