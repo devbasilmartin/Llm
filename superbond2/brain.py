@@ -168,6 +168,7 @@ FAST_NAMES = {t["function"]["name"] for t in FAST_TOOLS}
 BACKGROUND_TOOLS = [t for t in OWN_TOOLS if t["function"]["name"] not in ("run_routine", "switch_character")]
 BACKGROUND_NAMES = {t["function"]["name"] for t in BACKGROUND_TOOLS}
 SLOW_EVERY = 15             # with a fast brain: turns before the thoughtful one steps back in
+BACKGROUND_GAP = 2          # turns after a thoughtful one before a routine gets background thinking
 THINK_COOLDOWN = 3          # turns after a thoughtful one before the fast brain may ask again
 FAST_LINE = 220             # characters of each recent turn the fast brain reads (less to read)
 FAST_RECENT = 5             # turns shown to the fast brain
@@ -423,7 +424,8 @@ class Brain:
 
     # --- thinking while a routine plays ----------------------------------------------------
     def _think_in_background(self, routine: str) -> None:
-        if self.fast is None or self.background is not None or self.turns - self.last_slow < 5:
+        if self.fast is None or self.background is not None or \
+                self.turns - self.last_slow < BACKGROUND_GAP:
             return
         prompt = self.prompt(self.actions.view) + BACKGROUND.format(routine=routine)
         holder: dict = {}

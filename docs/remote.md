@@ -16,8 +16,11 @@ Remote Desktop** on Windows and your phone.
 
 - Windows: Settings → System → Power → when plugged in, **Sleep: Never**.
 - Leave the VM running, logged in to its desktop. superbond2 needs a screen to see.
-- Ollama on Windows: set the user environment variable `OLLAMA_HOST=0.0.0.0` (Start → "Edit
-  environment variables for your account"), then quit Ollama from the tray and start it again.
+- Ollama on Windows: set two user environment variables (Start → "Edit environment
+  variables for your account"), then quit Ollama from the tray and start it again:
+  - `OLLAMA_HOST` = `0.0.0.0`, so the VM can reach it;
+  - `OLLAMA_MAX_LOADED_MODELS` = `2`, so both of his brains stay loaded (otherwise each
+    handover between them can mean reloading a model: about 30 s for gemma4:12b).
 
 ## The Discord helper (about 5 minutes, after [discord.md](discord.md))
 

@@ -102,7 +102,7 @@ def test_the_owner_speaking_gets_the_thoughtful_brain(game, memory):
     assert slow.prompts[0].endswith("Time to think it over: the owner said something.")
 
 
-CHOP = {"name": "chop oaks", "about": "Chop until full.", "steps": ["click_nearest oak_tree if idle", "wait 2"],
+CHOP = {"name": "chop oaks", "about": "Chop until full.", "steps": ["click_nearest oak_tree if idle and see oak_tree", "wait 2"],
         "until": "inventory full"}
 
 
@@ -135,8 +135,22 @@ def test_no_background_thinking_right_after_a_thoughtful_turn(game, memory):
     fast, slow = Scripted(("run_routine", CHOP)), Scripted()
     b = two(game, memory, fast, slow)
     b.turns = b.last_slow = 3
-    b.turn()
+    b.turn()                                         # one turn after: not yet
     assert slow.prompts == [] and b.background is None
+
+
+def test_background_thinking_stands_in_for_stepping_back(game, memory):
+    fast = Scripted(("run_routine", CHOP), ("run_routine", CHOP), WAIT)
+    slow = Scripted(("journal", {"entry": "Oaks all day!"}))
+    b = two(game, memory, fast, slow)
+    b.journaled = 10 ** 6
+    b.turns = b.last_slow = 3
+    b.turns = 4                                      # two turns after the last thoughtful one
+    b.turn()
+    b.turn()                                         # the next routine: done thinking by then
+    assert slow.kinds == ["background"] and b.last_slow == 6
+    b.turn()
+    assert fast.kinds == ["fast"] * 3                # no extra thoughtful turn needed
 
 
 # --- the flee reflex -------------------------------------------------------------------------

@@ -199,7 +199,8 @@ need thought:
 When a routine starts, the big model thinks in the background while it plays (the CPU is
 mostly free then): plans, notes, routine fixes, journal entries, wiki reading. It can't use
 game actions, since the screen will have moved on. Without `--fast-model`, the big model
-takes every turn, as before.
+takes every turn, as before. On Windows, set `OLLAMA_MAX_LOADED_MODELS=2` so
+Ollama keeps both models loaded ([docs/remote.md](../docs/remote.md)).
 
 A few rules keep a confused model from making a mess: a goal can't change within 10 turns
 unless he says it's done or can't be done (every change messages you); he can't ask you a
